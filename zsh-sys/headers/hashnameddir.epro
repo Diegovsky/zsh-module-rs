@@ -1,0 +1,8 @@
+/* Generated automatically */
+#ifndef have_Src_hashnameddir_globals
+#define have_Src_hashnameddir_globals
+
+extern mod_import_variable HashTable nameddirtab;
+extern void createnameddirtable _((void));
+
+#endif /* !have_Src_hashnameddir_globals */

@@ -1,0 +1,33 @@
+/* Generated automatically */
+#ifndef have_Src_mem_globals
+#define have_Src_mem_globals
+
+#ifdef ZSH_HEAP_DEBUG
+extern mod_import_variable Heapid last_heap_id;
+#endif
+extern mod_import_function Heap new_heaps _((void));
+extern mod_import_function void old_heaps _((Heap old));
+extern mod_import_function Heap switch_heaps _((Heap new));
+extern mod_import_function void pushheap _((void));
+extern mod_import_function void freeheap _((void));
+extern mod_import_function void popheap _((void));
+extern mod_import_function void*zheapptr _((void*p));
+extern mod_import_function void*zhalloc _((size_t size));
+extern mod_import_function void*hrealloc _((char*p,size_t old,size_t new));
+#ifdef ZSH_HEAP_DEBUG
+extern mod_import_function int memory_validate _((Heapid heap_id));
+#endif
+extern mod_import_function void*hcalloc _((size_t size));
+extern mod_import_function void*zalloc _((size_t size));
+extern mod_import_function void*zshcalloc _((size_t size));
+extern mod_import_function void*zrealloc _((void*ptr,size_t size));
+#ifdef ZSH_MEM
+extern mod_import_function void zfree _((void*p,int sz));
+extern mod_import_function void zsfree _((char*p));
+extern int bin_mem _((char*name,char**argv,Options ops,int func));
+#else				/* not ZSH_MEM */
+extern mod_import_function void zfree _((void*p,UNUSED(int sz)));
+extern mod_import_function void zsfree _((char*p));
+#endif
+
+#endif /* !have_Src_mem_globals */

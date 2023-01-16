@@ -1,0 +1,11 @@
+/* Generated automatically */
+#ifndef have_Src_cond_globals
+#define have_Src_cond_globals
+
+extern int tracingcond;
+extern int evalcond _((Estate state,char*fromtest));
+extern mod_import_function char*cond_str _((char**args,int num,int raw));
+extern mod_import_function zlong cond_val _((char**args,int num));
+extern mod_import_function int cond_match _((char**args,int num,char*str));
+
+#endif /* !have_Src_cond_globals */

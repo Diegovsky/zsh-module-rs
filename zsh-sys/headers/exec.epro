@@ -1,0 +1,69 @@
+/* Generated automatically */
+#ifndef have_Src_exec_globals
+#define have_Src_exec_globals
+
+extern int noerrexit;
+extern int this_noerrexit;
+extern mod_import_variable int noerrs;
+extern int nohistsave;
+extern mod_import_variable volatile int errflag;
+extern int trap_state;
+extern int trap_return;
+extern int subsh;
+extern mod_import_variable volatile int retflag;
+extern long lastval2;
+extern mod_import_variable unsigned char*fdtable;
+extern int fdtable_size;
+extern mod_import_variable int max_zsh_fd;
+extern mod_import_variable int coprocin;
+extern mod_import_variable int coprocout;
+extern int fdtable_flocks;
+extern mod_import_variable int zleactive;
+extern pid_t cmdoutpid;
+extern mod_import_variable pid_t procsubstpid;
+extern int cmdoutval;
+extern int use_cmdoutval;
+extern mod_import_variable int sfcontext;
+extern struct execstack*exstack;
+extern mod_import_variable Funcstack funcstack;
+extern mod_import_function Eprog parse_string _((char*s,int reset_lineno));
+#ifdef HAVE_GETRLIMIT
+extern mod_import_variable struct rlimit current_limits[RLIM_NLIMITS];
+extern mod_import_variable struct rlimit limits[RLIM_NLIMITS];
+extern mod_import_function int zsetlimit _((int limnum,char*nam));
+extern mod_import_function int setlimits _((char*nam));
+#endif /* HAVE_GETRLIMIT */
+extern int list_pipe;
+extern int simple_pline;
+extern mod_import_function char*findcmd _((char*arg0,int docopy,int default_path));
+extern int iscom _((char*s));
+extern int isreallycom _((Cmdnam cn));
+extern int isrelative _((char*s));
+extern mod_import_function Cmdnam hashcmd _((char*arg0,char**pp));
+extern int forklevel;
+extern mod_import_function void execstring _((char*s,int dont_change_job,int exiting,char*context));
+extern mod_import_function void execode _((Eprog p,int dont_change_job,int exiting,char*context));
+extern void execlist _((Estate state,int dont_change_job,int exiting));
+extern mod_import_function void untokenize _((char*s));
+extern void quote_tokenized_output _((char*str,FILE*file));
+extern void setunderscore _((char*str));
+extern void execsubst _((LinkList strs));
+extern mod_import_function void closem _((int how,int all));
+extern char*gethere _((char**strp,int typ));
+extern LinkList getoutput _((char*cmd,int qt));
+extern mod_import_function LinkList readoutput _((int in,int qt,int*readerror));
+extern char*getoutputfile _((char*cmd,char**eptr));
+extern char*getproc _((char*cmd,char**eptr));
+extern int is_anonymous_function_name _((const char*name));
+extern mod_import_function Emulation_options sticky_emulation_dup _((Emulation_options src,int useheap));
+extern mod_import_function void shfunc_set_sticky _((Shfunc shf));
+extern Shfunc loadautofn _((Shfunc shf,int fksh,int autol,int current_fpath));
+extern int sticky_emulation_differs _((Emulation_options sticky2));
+extern mod_import_function int doshfunc _((Shfunc shfunc,LinkList doshargs,int noreturnval));
+extern mod_import_function void runshfunc _((Eprog prog,FuncWrap wrap,char*name));
+extern Eprog getfpfunc _((char*s,int*ksh,char**fdir,char**alt_path,int test_only));
+extern Eprog stripkshdef _((Eprog prog,char*name));
+extern void execsave _((void));
+extern void execrestore _((void));
+
+#endif /* !have_Src_exec_globals */

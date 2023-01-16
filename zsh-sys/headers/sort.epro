@@ -1,0 +1,8 @@
+/* Generated automatically */
+#ifndef have_Src_sort_globals
+#define have_Src_sort_globals
+
+extern mod_import_function int zstrcmp _((const char*as,const char*bs,int sortflags));
+extern mod_import_function void strmetasort _((char**array,int sortwhat,int*unmetalenp));
+
+#endif /* !have_Src_sort_globals */

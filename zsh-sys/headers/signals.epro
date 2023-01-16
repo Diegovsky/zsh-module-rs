@@ -1,0 +1,47 @@
+/* Generated automatically */
+#ifndef have_Src_signals_globals
+#define have_Src_signals_globals
+
+extern mod_import_variable int sigtrapped[VSIGCOUNT];
+extern mod_import_variable Eprog siglists[VSIGCOUNT];
+extern mod_import_variable volatile int nsigtrapped;
+extern int in_exit_trap;
+extern mod_import_variable volatile int queueing_enabled;
+extern mod_import_variable volatile int queue_front;
+extern mod_import_variable volatile int queue_rear;
+extern mod_import_variable int signal_queue[MAX_QUEUE_SIZE];
+extern mod_import_variable sigset_t signal_mask_queue[MAX_QUEUE_SIZE];
+extern mod_import_variable volatile int queue_in;
+extern mod_import_variable volatile int trap_queueing_enabled;
+extern mod_import_variable volatile int trap_queue_front;
+extern mod_import_variable volatile int trap_queue_rear;
+extern mod_import_variable int trap_queue[MAX_QUEUE_SIZE];
+extern mod_import_function void install_handler _((int sig));
+extern mod_import_function void intr _((void));
+extern mod_import_function void holdintr _((void));
+extern mod_import_function void noholdintr _((void));
+extern mod_import_function sigset_t signal_mask _((int sig));
+#ifndef BSD_SIGNALS
+extern mod_import_function sigset_t signal_block _((sigset_t set));
+#endif /* BSD_SIGNALS */
+extern mod_import_function sigset_t signal_unblock _((sigset_t set));
+extern mod_import_function sigset_t signal_setmask _((sigset_t set));
+extern int signal_suspend _((UNUSED(int sig),int wait_cmd));
+extern int last_signal;
+extern void wait_for_processes _((void));
+extern mod_import_function void zhandler _((int sig));
+extern void killrunjobs _((int from_signal));
+extern int killjb _((Job jn,int sig));
+extern mod_import_function int settrap _((int sig,Eprog l,int flags));
+extern void unsettrap _((int sig));
+extern HashNode removetrap _((int sig));
+extern void starttrapscope _((void));
+extern void endtrapscope _((void));
+extern void queue_traps _((int wait_cmd));
+extern void unqueue_traps _((void));
+extern volatile int intrap;
+extern volatile int trapisfunc;
+extern volatile int traplocallevel;
+extern void dotrap _((int sig));
+
+#endif /* !have_Src_signals_globals */

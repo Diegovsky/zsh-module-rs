@@ -1,0 +1,39 @@
+/* Generated automatically */
+#ifndef have_Src_pattern_globals
+#define have_Src_pattern_globals
+
+extern mod_import_variable const char*zpc_strings[ZPC_COUNT];
+extern mod_import_variable char zpc_disables[ZPC_COUNT];
+extern char zpc_special[ZPC_COUNT];
+extern mod_import_function void clear_shiftstate _((void));
+extern void patcompstart _((void));
+extern mod_import_function Patprog patcompile _((char*exp,int inflags,char**endexp));
+extern int patgetglobflags _((char**strp,long*assertp,int*ignore));
+extern mod_import_function int range_type _((char*start,int len));
+extern mod_import_function int pattern_range_to_string _((char*rangestr,char*outstr));
+extern int errsfound;
+extern int forceerrs;
+extern void pattrystart _((void));
+extern mod_import_function char*patallocstr _((Patprog prog,char*string,int stringlen,int unmetalen,int force,Patstralloc patstralloc));
+extern mod_import_function int pattry _((Patprog prog,char*string));
+extern mod_import_function int pattrylen _((Patprog prog,char*string,int len,int unmetalen,Patstralloc patstralloc,int offset));
+extern mod_import_function int pattryrefs _((Patprog prog,char*string,int stringlen,int unmetalenin,Patstralloc patstralloc,int patoffset,int*nump,int*begp,int*endp));
+extern int patmatchlen _((void));
+#ifdef MULTIBYTE_SUPPORT
+extern mod_import_function int mb_patmatchrange _((char*range,wchar_t ch,int zmb_ind,wint_t*indptr,int*mtp));
+extern mod_import_function int mb_patmatchindex _((char*range,wint_t ind,wint_t*chr,int*mtp));
+#endif /* MULTIBYTE_SUPPORT */
+extern mod_import_function int patmatchrange _((char*range,int ch,int*indptr,int*mtp));
+#ifndef MULTIBYTE_SUPPORT
+extern mod_import_function int patmatchindex _((char*range,int ind,int*chr,int*mtp));
+#endif /* MULTIBYTE_SUPPORT */
+extern mod_import_function void freepatprog _((Patprog prog));
+extern int pat_enables _((const char*cmd,char**patp,int enable));
+extern unsigned int savepatterndisables _((void));
+extern void startpatternscope _((void));
+extern void restorepatterndisables _((unsigned int disables));
+extern void endpatternscope _((void));
+extern void clearpatterndisables _((void));
+extern mod_import_function int haswilds _((char*str));
+
+#endif /* !have_Src_pattern_globals */

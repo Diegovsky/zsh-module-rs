@@ -1,0 +1,53 @@
+/* Generated automatically */
+#ifndef have_Src_parse_globals
+#define have_Src_parse_globals
+
+extern mod_import_variable int incmdpos;
+extern int aliasspaceflag;
+extern mod_import_variable int incond;
+extern mod_import_variable int inredir;
+extern int incasepat;
+extern int isnewlin;
+extern int infor;
+extern int inrepeat_;
+extern mod_import_variable int intypeset;
+extern struct heredocs*hdocs;
+extern void parse_context_save _((struct parse_stack*ps,int toplevel));
+extern void parse_context_restore _((const struct parse_stack*ps,int toplevel));
+extern mod_import_function void init_parse_status _((void));
+extern void init_parse _((void));
+extern mod_import_function int empty_eprog _((Eprog p));
+extern Eprog parse_event _((int endtok));
+extern int par_event _((int endtok));
+extern mod_import_function Eprog parse_list _((void));
+extern mod_import_function Eprog parse_cond _((void));
+extern void setheredoc _((int pc,int type,char*str,char*termstr,char*munged_termstr));
+extern void(*condlex)_((void));
+extern mod_import_function Eprog dupeprog _((Eprog p,int heap));
+extern mod_import_function void useeprog _((Eprog p));
+extern mod_import_function void freeeprog _((Eprog p));
+extern char*ecgetstr _((Estate s,int dup,int*tokflag));
+extern char*ecrawstr _((Eprog p,Wordcode pc,int*tokflag));
+extern char**ecgetarr _((Estate s,int num,int dup,int*tokflag));
+extern LinkList ecgetlist _((Estate s,int num,int dup,int*tokflag));
+extern LinkList ecgetredirs _((Estate s));
+extern Eprog eccopyredirs _((Estate s));
+extern mod_import_variable struct eprog dummy_eprog;
+extern void init_eprog _((void));
+extern int bin_zcompile _((char*nam,char**args,Options ops,UNUSED(int func)));
+#if defined(HAVE_SYS_MMAN_H) && defined(HAVE_MMAP) && defined(HAVE_MUNMAP)
+#if defined(MAP_SHARED) && defined(PROT_READ)
+#define USE_MMAP 1
+#endif
+#endif
+#ifdef USE_MMAP
+#endif
+extern Eprog try_dump_file _((char*path,char*name,char*file,int*ksh,int test_only));
+extern Eprog try_source_file _((char*file));
+extern void incrdumpcount _((FuncDump f));
+extern void decrdumpcount _((FuncDump f));
+extern mod_import_function void closedumps _((void));
+extern mod_import_function void closedumps _((void));
+extern int dump_autoload _((char*nam,char*file,int on,Options ops,int func));
+
+#endif /* !have_Src_parse_globals */

@@ -1,0 +1,12 @@
+/* Generated automatically */
+#ifndef have_Src_text_globals
+#define have_Src_text_globals
+
+extern int text_expand_tabs;
+extern int is_cond_binary_op _((const char*str));
+extern void zoutputtab _((FILE*outf));
+extern mod_import_function char*getpermtext _((Eprog prog,Wordcode c,int start_indent));
+extern char*getjobtext _((Eprog prog,Wordcode c));
+extern void getredirs _((LinkList redirs));
+
+#endif /* !have_Src_text_globals */

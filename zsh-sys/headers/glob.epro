@@ -1,0 +1,28 @@
+/* Generated automatically */
+#ifndef have_Src_glob_globals
+#define have_Src_glob_globals
+
+extern int badcshglob;
+extern int pathpos;
+extern char*pathbuf;
+extern mod_import_variable char*glob_pre;
+extern mod_import_variable char*glob_suf;
+extern int checkglobqual _((char*str,int sl,int nobareglob,char**sp));
+extern void zglob _((LinkList list,LinkNode np,int nountok));
+extern mod_import_function char file_type _((mode_t filemode));
+extern mod_import_function int hasbraces _((char*str));
+extern int xpandredir _((struct redir*fn,LinkList redirtab));
+extern mod_import_function void xpandbraces _((LinkList list,LinkNode*np));
+extern int matchpat _((char*a,char*b));
+extern int getmatch _((char**sp,char*pat,int fl,int n,char*replstr));
+extern void getmatcharr _((char***ap,char*pat,int fl,int n,char*replstr));
+extern mod_import_function int getmatchlist _((char*str,Patprog p,LinkList*repllistp));
+extern mod_import_function void freematchlist _((LinkList repllist));
+#ifdef MULTIBYTE_SUPPORT
+#else
+#endif /* MULTIBYTE_SUPPORT */
+extern mod_import_function void tokenize _((char*s));
+extern mod_import_function void shtokenize _((char*s));
+extern mod_import_function void remnulargs _((char*s));
+
+#endif /* !have_Src_glob_globals */

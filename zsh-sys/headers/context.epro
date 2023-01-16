@@ -1,0 +1,10 @@
+/* Generated automatically */
+#ifndef have_Src_context_globals
+#define have_Src_context_globals
+
+extern mod_import_function void zcontext_save_partial _((int parts));
+extern mod_import_function void zcontext_save _((void));
+extern mod_import_function void zcontext_restore_partial _((int parts));
+extern mod_import_function void zcontext_restore _((void));
+
+#endif /* !have_Src_context_globals */

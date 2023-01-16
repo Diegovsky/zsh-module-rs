@@ -1,0 +1,70 @@
+/* Generated automatically */
+#ifndef have_Src_module_globals
+#define have_Src_module_globals
+
+extern LinkList linkedmodules;
+extern char**module_path;
+extern mod_import_variable HashTable modulestab;
+extern HashTable newmoduletable _((int size,char const*name));
+extern int setup_ _((UNUSED(Module m)));
+extern int features_ _((UNUSED(Module m),UNUSED(char***features)));
+extern int enables_ _((UNUSED(Module m),UNUSED(int**enables)));
+extern int boot_ _((UNUSED(Module m)));
+extern int cleanup_ _((UNUSED(Module m)));
+extern int finish_ _((UNUSED(Module m)));
+extern void register_module _((char*n,Module_void_func setup,Module_features_func features,Module_enables_func enables,Module_void_func boot,Module_void_func cleanup,Module_void_func finish));
+extern Linkedmod module_linked _((char const*name));
+extern int deletebuiltin _((const char*nam));
+extern mod_import_function int addbuiltins _((char const*nam,Builtin binl,int size));
+extern FuncWrap wrappers;
+extern mod_import_function int addwrapper _((Module m,FuncWrap w));
+extern mod_import_function int deletewrapper _((Module m,FuncWrap w));
+extern mod_import_variable Conddef condtab;
+extern Conddef getconddef _((int inf,const char*name,int autol));
+extern int deleteconddef _((Conddef c));
+extern Hookdef hooktab;
+extern Hookdef gethookdef _((char*n));
+extern int addhookdef _((Hookdef h));
+extern mod_import_function int addhookdefs _((Module m,Hookdef h,int size));
+extern int deletehookdef _((Hookdef h));
+extern mod_import_function int deletehookdefs _((UNUSED(Module m),Hookdef h,int size));
+extern int addhookdeffunc _((Hookdef h,Hookfn f));
+extern mod_import_function int addhookfunc _((char*n,Hookfn f));
+extern int deletehookdeffunc _((Hookdef h,Hookfn f));
+extern mod_import_function int deletehookfunc _((char*n,Hookfn f));
+extern mod_import_function int runhookdef _((Hookdef h,void*d));
+extern int addparamdef _((Paramdef d));
+extern int deleteparamdef _((Paramdef d));
+extern MathFunc mathfuncs;
+extern void removemathfunc _((MathFunc previous,MathFunc current));
+extern MathFunc getmathfunc _((const char*name,int autol));
+extern mod_import_function int deletemathfunc _((MathFunc f));
+#ifdef DYNAMIC
+#ifdef AIXDYNAMIC
+#else
+#ifdef HPUX10DYNAMIC
+#endif
+#endif /* !AIXDYNAMIC */
+#else /* !DYNAMIC */
+#endif /* !DYNAMIC */
+extern mod_import_function int module_loaded _((const char*name));
+#ifdef DYNAMIC
+#ifdef AIXDYNAMIC
+#else
+#endif /* !AIXDYNAMIC */
+#else /* !DYNAMIC */
+#endif /* !DYNAMIC */
+extern mod_import_function int load_module _((char const*name,Feature_enables enablesarr,int silent));
+extern mod_import_function int require_module _((const char*module,Feature_enables features,int silent));
+extern void add_dep _((const char*name,char*from));
+extern int bin_zmodload _((char*nam,char**args,Options ops,UNUSED(int func)));
+extern int unload_module _((Module m));
+extern int unload_named_module _((char*modname,char*nam,int silent));
+extern mod_import_function char**featuresarray _((UNUSED(Module m),Features f));
+extern mod_import_function int*getfeatureenables _((UNUSED(Module m),Features f));
+extern mod_import_function int setfeatureenables _((Module m,Features f,int*e));
+extern mod_import_function int handlefeatures _((Module m,Features f,int**enables));
+extern mod_import_function int ensurefeature _((const char*modname,const char*prefix,const char*feature));
+extern int autofeatures _((const char*cmdnam,const char*module,char**features,int prefchar,int defflags));
+
+#endif /* !have_Src_module_globals */

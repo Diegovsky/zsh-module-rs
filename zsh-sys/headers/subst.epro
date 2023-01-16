@@ -1,0 +1,16 @@
+/* Generated automatically */
+#ifndef have_Src_subst_globals
+#define have_Src_subst_globals
+
+extern char nulstring[];
+extern mod_import_function void prefork _((LinkList list,int flags,int*ret_flags));
+extern char*quotesubst _((char*str));
+extern mod_import_function void globlist _((LinkList list,int flags));
+extern mod_import_function void singsub _((char**s));
+extern mod_import_function void filesub _((char**namptr,int assign));
+extern char*equalsubstr _((char*str,int assign,int nomatch));
+extern mod_import_function int filesubstr _((char**namptr,int assign));
+extern char*get_strarg _((char*s,int*lenp));
+extern void modify _((char**str,char**ptr,int inbrace));
+
+#endif /* !have_Src_subst_globals */

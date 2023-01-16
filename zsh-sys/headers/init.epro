@@ -1,0 +1,46 @@
+/* Generated automatically */
+#ifndef have_Src_init_globals
+#define have_Src_init_globals
+
+extern int noexitct;
+extern char*zunderscore;
+extern size_t underscorelen;
+extern int underscoreused;
+extern int sourcelevel;
+extern mod_import_variable int SHTTY;
+extern mod_import_variable FILE*shout;
+extern mod_import_variable char*tcstr[TC_COUNT];
+extern mod_import_variable int tclen[TC_COUNT];
+extern int tclines;
+extern int tccolumns;
+extern mod_import_variable int hasam;
+extern mod_import_variable int hasbw;
+extern mod_import_variable int hasxn;
+extern mod_import_variable int hasye;
+extern mod_import_variable int tccolours;
+extern mod_import_variable sigset_t sigchld_mask;
+extern mod_import_variable struct hookdef zshhooks[];
+extern enum loop_return loop _((int toplevel,int justonce));
+extern mod_import_function int parseopts _((char*nam,char***argvp,char*new_opts,char**cmdp,LinkList optlist,int flags,int*needkeymap));
+extern mod_import_function void init_io _((char*cmd));
+extern mod_import_function void init_shout _((void));
+extern mod_import_function char*tccap_get_name _((int cap));
+extern mod_import_function int init_term _((void));
+extern void setupvals _((char*cmd,char*runscript,char*zsh_name));
+extern void init_signals _((void));
+extern void run_init_scripts _((void));
+extern void init_misc _((char*cmd,char*zsh_name));
+extern mod_import_function enum source_return source _((char*s));
+extern void sourcehome _((char*s));
+extern void init_bltinmods _((void));
+extern mod_import_function void noop_function _((void));
+extern mod_import_function void noop_function_int _((UNUSED(int nothing)));
+extern mod_import_variable ZleEntryPoint zle_entry_ptr;
+extern mod_import_variable int zle_load_state;
+extern mod_import_function char * zleentry(VA_ALIST_PROTO1(int cmd));
+extern mod_import_variable CompctlReadFn compctlreadptr;
+extern mod_import_function int fallback_compctlread _((char*name,UNUSED(char**args),UNUSED(Options ops),UNUSED(char*reply)));
+extern mod_import_variable int use_exit_printed;
+extern mod_import_function int zsh_main _((UNUSED(int argc),char**argv));
+
+#endif /* !have_Src_init_globals */

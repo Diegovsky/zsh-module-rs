@@ -1,0 +1,47 @@
+/* Generated automatically */
+#ifndef have_Src_hashtable_globals
+#define have_Src_hashtable_globals
+
+extern mod_import_function unsigned hasher _((const char*str));
+extern mod_import_function HashTable newhashtable _((int size,UNUSED(char const*name),UNUSED(PrintTableStats printinfo)));
+extern mod_import_function void deletehashtable _((HashTable ht));
+extern mod_import_function void addhashnode _((HashTable ht,char*nam,void*nodeptr));
+extern HashNode addhashnode2 _((HashTable ht,char*nam,void*nodeptr));
+extern mod_import_function HashNode gethashnode _((HashTable ht,const char*nam));
+extern mod_import_function HashNode gethashnode2 _((HashTable ht,const char*nam));
+extern mod_import_function HashNode removehashnode _((HashTable ht,const char*nam));
+extern void disablehashnode _((HashNode hn,UNUSED(int flags)));
+extern void enablehashnode _((HashNode hn,UNUSED(int flags)));
+extern mod_import_function int scanmatchtable _((HashTable ht,Patprog pprog,int sorted,int flags1,int flags2,ScanFunc scanfunc,int scanflags));
+extern mod_import_function int scanhashtable _((HashTable ht,int sorted,int flags1,int flags2,ScanFunc scanfunc,int scanflags));
+extern mod_import_function void emptyhashtable _((HashTable ht));
+#ifdef ZSH_HASH_DEBUG
+extern int bin_hashinfo _((UNUSED(char*nam),UNUSED(char**args),UNUSED(Options ops),UNUSED(int func)));
+#endif /* ZSH_HASH_DEBUG */
+extern mod_import_variable HashTable cmdnamtab;
+extern mod_import_variable char**pathchecked;
+extern void createcmdnamtable _((void));
+extern void hashdir _((char**dirp));
+extern mod_import_variable HashTable shfunctab;
+extern void createshfunctable _((void));
+extern mod_import_function int scanmatchshfunc _((Patprog pprog,int sorted,int flags1,int flags2,ScanFunc scanfunc,int scanflags,int expand));
+extern mod_import_function int scanshfunc _((int sorted,int flags1,int flags2,ScanFunc scanfunc,int scanflags,int expand));
+extern mod_import_function void printshfuncexpand _((HashNode hn,int printflags,int expand));
+extern mod_import_function char*getshfuncfile _((Shfunc shf));
+extern mod_import_variable HashTable reswdtab;
+extern void createreswdtable _((void));
+extern mod_import_variable HashTable aliastab;
+extern mod_import_variable HashTable sufaliastab;
+extern void createaliastable _((HashTable ht));
+extern void createaliastables _((void));
+extern mod_import_function Alias createaliasnode _((char*txt,int flags));
+extern void createhisttable _((void));
+extern unsigned histhasher _((const char*str));
+extern void emptyhisttable _((HashTable ht));
+extern int histstrcmp _((const char*str1,const char*str2));
+extern void addhistnode _((HashTable ht,char*nam,void*nodeptr));
+extern void freehistnode _((HashNode nodeptr));
+extern void freehistdata _((Histent he,int unlink));
+extern mod_import_function void dircache_set _((char**name,char*value));
+
+#endif /* !have_Src_hashtable_globals */

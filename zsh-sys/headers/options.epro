@@ -1,0 +1,21 @@
+/* Generated automatically */
+#ifndef have_Src_options_globals
+#define have_Src_options_globals
+
+extern mod_import_variable int emulation;
+extern mod_import_variable Emulation_options sticky;
+extern mod_import_variable char opts[OPT_SIZE];
+extern mod_import_variable HashTable optiontab;
+extern void createoptiontable _((void));
+extern void installemulation _((int new_emulation,char*new_opts));
+extern void emulate _((const char*zsh_name,int fully,int*new_emulation,char*new_opts));
+extern int bin_setopt _((char*nam,char**args,UNUSED(Options ops),int isun));
+extern mod_import_function int optlookup _((char const*name));
+extern int optlookupc _((char c));
+extern mod_import_function int dosetopt _((int optno,int value,int force,char*new_opts));
+extern char*dashgetfn _((UNUSED(Param pm)));
+extern void printoptionstates _((int hadplus));
+extern void printoptionlist _((void));
+extern void list_emulate_options _((char*cmdopts,int fully));
+
+#endif /* !have_Src_options_globals */

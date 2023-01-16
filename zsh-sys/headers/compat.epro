@@ -1,0 +1,45 @@
+/* Generated automatically */
+#ifndef have_Src_compat_globals
+#define have_Src_compat_globals
+
+#ifndef HAVE_STRSTR
+extern char*strstr _((const char*s,const char*t));
+#endif
+#ifndef HAVE_GETHOSTNAME
+extern int gethostname _((char*name,size_t namelen));
+#endif
+#ifndef HAVE_GETTIMEOFDAY
+extern int gettimeofday _((struct timeval*tv,struct timezone*tz));
+#endif
+extern mod_import_function int zgettime _((struct timespec*ts));
+extern mod_import_function int zgettime_monotonic_if_available _((struct timespec*ts));
+#ifndef HAVE_DIFFTIME
+extern double difftime _((time_t t2,time_t t1));
+#endif
+#ifndef HAVE_STRERROR
+extern char*strerror _((int errnum));
+#endif
+extern mod_import_function long zpathmax _((char*dir));
+#ifdef HAVE_SYSCONF
+extern mod_import_function long zopenmax _((void));
+#endif
+extern mod_import_function char*zgetdir _((struct dirsav*d));
+extern mod_import_function char*zgetcwd _((void));
+extern mod_import_function int zchdir _((char*dir));
+#ifdef ZSH_64_BIT_TYPE
+extern mod_import_function char*output64 _((zlong val));
+#endif /* ZSH_64_BIT_TYPE */
+#ifndef HAVE_STRTOUL
+extern unsigned long strtoul(nptr;
+extern unsigned long endptr;
+extern unsigned long base)const char*nptr;
+#endif /* HAVE_STRTOUL */
+#ifdef ENABLE_UNICODE9
+extern int u9_wcwidth _((wchar_t ucs));
+extern int u9_iswprint _((wint_t ucs));
+#endif	/* ENABLE_UNICODE9 */
+#if defined(__APPLE__) && defined(BROKEN_ISPRINT)
+extern int isprint_ascii _((int c));
+#endif /* __APPLE__ && BROKEN_ISPRINT */
+
+#endif /* !have_Src_compat_globals */

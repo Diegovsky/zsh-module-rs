@@ -1,0 +1,17 @@
+/* Generated automatically */
+#ifndef have_Src_math_globals
+#define have_Src_math_globals
+
+extern int noeval;
+extern mod_import_variable mnumber zero_mnumber;
+extern mnumber lastmathval;
+extern int lastbase;
+extern int outputradix;
+extern int outputunderscore;
+extern int isinf _((double x));
+extern int isnan _((double x));
+extern mod_import_function mnumber matheval _((char*s));
+extern mod_import_function zlong mathevali _((char*s));
+extern zlong mathevalarg _((char*s,char**ss));
+
+#endif /* !have_Src_math_globals */
