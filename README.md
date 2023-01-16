@@ -1,61 +1,7 @@
-This is a high level crate that allows you to define your own zsh module.
+This is a high level crate that allows you to define your own zsh module. It is in a very early state but it can be used to define commands.
 
-# Getting started
-To get started, first, you need to create library, not an executable. Then, change your crate
-type to `"cdylib"` on your `Cargo.toml`:
-```toml
-[lib]
-crate-type = ["cdylib"]
-```
+In the future, most zsh module functionality will be added. Feel free to send a PR if you would like to add more functionality :)
 
-# Boilerplate
-On your `lib.rs`, you need to put a [`impl_hooks`] macro call, alongside a `setup` function
-with the following signature:
-```rust
-use zsh_module::{ Module, ModuleBuilder }
+# Documentation
 
-zsh_module::impl_hooks!();
-
-fn setup() -> Result<Module, ()> {
-   todo!() 
-}
-```
-
-# Defining [`Actions`]
-The main point part of crating a module is implementing [`Actions`]. Here's an example module:
-```rust
-use zsh_module::{ Module, ModuleBuilder, Actions, Result }
-
-zsh_module::impl_hooks!();
-
-struct Greeter;
-
-impl Actions for Greeter {
-    fn boot(mut &self) -> Result<()> {
-        println!("Hello, everyone!");
-        Ok(())
-    }
-    fn cleanup(&mut self) -> Result<()> {
-        println!("Bye, everyone!");
-        Ok(())
-    }
-}
-
-fn setup() -> Result<Module> {
-    let module = ModuleBuilder::new()
-        .build(Greeter);
-    Ok(module)
-}
-```
-
-# Installing
-When your module is ready, copy your shared library to your distribution's zsh module folder,
-without the `lib` prefix.
-On Arch Linux, it's `/usr/lib/zsh/<zsh-version>/zsh/`.
-
-That is it!
-
-If everything went fine, you can load it in zsh using the following command:
-```zsh
-zmodload zsh/<module-name>
-```
+Take a look at our online [docs](https://docs.rs/zsh-module/latest/zsh-module) for a quick guide.
