@@ -1,6 +1,7 @@
+//! # Zsh Module
 //! This is a high level crate that allows you to define your own zsh module.
 //!
-//! # Getting started
+//! ## Getting started
 //! To get started, first, you need to create library, not an executable. Then, change your crate
 //! type to `"cdylib"` on your `Cargo.toml`:
 //! ```toml
@@ -8,25 +9,25 @@
 //! crate-type = ["cdylib"]
 //! ```
 //!
-//! # Boilerplate
-//! On your `lib.rs`, you need to put a [`impl_hooks`] macro call, alongside a `setup` function
-//! with the following signature:
+//! ## Boilerplate
+//! On your `lib.rs`, you need to put a [`export_module!`] macro call, alongside a `setup` function
+//! (can be called whatever you want):
 //! ```rust
 //! use zsh_module::{ Module, ModuleBuilder }
 //!
-//! zsh_module::impl_hooks!();
+//! zsh_module::export_module!(setup);
 //!
 //! fn setup() -> Result<Module, ()> {
 //!    todo!()
 //! }
 //! ```
 //!
-//! # Defining [`Actions`]
+//! ## Defining [`Actions`]
 //! The main point part of crating a module is implementing [`Actions`]. Here's an example module:
 //! ```rust
 //! use zsh_module::{ Module, ModuleBuilder, Actions, Result }
 //!
-//! zsh_module::impl_hooks!();
+//! zsh_module::export_module!(setup);
 //!
 //! struct Greeter;
 //!
@@ -42,23 +43,25 @@
 //! }
 //!
 //! fn setup() -> Result<Module> {
-//!     let module = ModuleBuilder::new()
-//!         .build(Greeter);
+//!     let module = ModuleBuilder::new(Greeter)
+//!         .build();
 //!     Ok(module)
 //! }
 //! ```
 //!
-//! # Installing
-//! When your module is ready, copy your shared library to your distribution's zsh module folder,
-//! without the `lib` prefix.
-//! On Arch Linux, it's `/usr/lib/zsh/<zsh-version>/zsh/`.
+//! ## Installing
+//! When your module is ready, copy your shared library to your distribution's zsh module folder
+//! and name it whatever you want, the only requirement is that it ends with your platforms's
+//! dynamic loadable library extension.
 //!
-//! That is it!
+//! On my machine, the zsh module folder is `/usr/lib/zsh/<zsh-version>/zsh/`.
 //!
 //! If everything went fine, you can load it in zsh using the following command:
 //! ```zsh
 //! zmodload zsh/<module-name>
 //! ```
+//!
+//! That is it!
 
 #![feature(trait_alias)]
 use std::{
@@ -80,6 +83,7 @@ pub mod log;
 /// This crate's error type.
 pub type Error = Box<dyn std::error::Error + Send>;
 
+/// `Result<T, Error>`
 pub type Result<T> = std::result::Result<T, Error>;
 
 trait AnyCmd = FnMut(&mut (dyn Actions + 'static), &str, &[&str]) -> Result<()>;

@@ -60,6 +60,7 @@ extern {
 }
 
 #[macro_export]
+/// Exports a `setup` function to be called when the module needs to be set up.
 macro_rules! export_module {
     ($name:ident) => {
         #[no_mangle]
