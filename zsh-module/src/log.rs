@@ -26,7 +26,7 @@ pub fn error(msg: &str) {
 /// Prints out a warning message from a command, like [`println!`]
 macro_rules! warn_named {
     ($cmd:expr, $msg:expr $(,$val:expr)*) => {
-       $crate::log::warn_named($cmd, &format!($msg, $($val),*)) 
+       $crate::log::warn_named($cmd, &format!($msg, $($val),*))
     };
 }
 
@@ -34,7 +34,7 @@ macro_rules! warn_named {
 /// Prints out a warning message, like [`println!`]
 macro_rules! warn {
     ($msg:expr $(,$val:expr)*) => {
-       $crate::log::warn(&format!($msg, $($val),*)) 
+       $crate::log::warn(&format!($msg, $($val),*))
     };
 }
 
@@ -42,6 +42,6 @@ macro_rules! warn {
 #[macro_export]
 macro_rules! error {
     ($msg:expr $(,$val:expr)*) => {
-       $crate::log::error(&format!($msg, $($val),*)) 
+       $crate::log::error(&format!($msg, $($val),*))
     };
 }

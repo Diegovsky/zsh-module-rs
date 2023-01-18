@@ -1,2 +1,2 @@
 [workspace]
-members = ["zsh-sys", "zsh-module", "example"]
+members = ["zsh-sys", "zsh-module", "greeter"]
