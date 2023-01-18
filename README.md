@@ -36,4 +36,4 @@ Here's a simple greeter module:
 
 For more information, take at look at the [`example` module][example]
 
-[example]: https://github.com/Diegovsky/zsh-module-rs/tree/master/example
+[example]: https://github.com/Diegovsky/zsh-module-rs/tree/master/greeter
