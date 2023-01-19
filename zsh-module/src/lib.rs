@@ -81,7 +81,7 @@ pub use zsh_sys as zsys;
 mod features;
 pub mod log;
 /// This crate's error type.
-pub type Error = Box<dyn std::error::Error + Send>;
+pub type Error = Box<dyn std::error::Error>;
 
 /// `Result<T, Error>`
 pub type Result<T> = std::result::Result<T, Error>;
