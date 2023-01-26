@@ -1,6 +1,6 @@
 [package]
 name = "zsh-module"
-version = "0.2.2"
+version = "0.3.0"
 edition = "2021"
 license = "MIT"
 description = "A High-level framework for creating zsh modules"
@@ -11,5 +11,5 @@ export_module = []
 default = ["export_module"]
 
 [dependencies]
-downcast-rs = "1.2.0"
+parking_lot = "0.12.1"
 zsh-sys = {path="../zsh-sys", version = "0.1"}

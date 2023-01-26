@@ -1,21 +1,19 @@
-use zsh_module::{Actions, Module, ModuleBuilder, Result};
+use zsh_module::{Builtin, Module, ModuleBuilder, Opts, Result};
 
 zsh_module::export_module!(setup);
 
 struct Greeter;
 
-impl Actions for Greeter {
-    fn boot(&mut self) -> Result<()> {
-        println!("Hello, everyone!");
-        Ok(())
-    }
-    fn cleanup(&mut self) -> Result<()> {
-        println!("Bye, everyone!");
+impl Greeter {
+    fn greet_cmd(&mut self, name: &str, args: &[&str], opts: Opts) -> Result<()> {
+        println!("Hello, world!");
         Ok(())
     }
 }
 
 fn setup() -> Result<Module> {
-    let module = ModuleBuilder::new(Greeter).build();
+    let module = ModuleBuilder::new(Greeter)
+        .builtin(Greeter::greet_cmd, Builtin::new("greet"))
+        .build();
     Ok(module)
 }

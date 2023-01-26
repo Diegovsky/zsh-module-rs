@@ -13,37 +13,35 @@
 //! On your `lib.rs`, you need to put a [`export_module!`] macro call, alongside a `setup` function
 //! (can be called whatever you want):
 //! ```rust
-//! use zsh_module::{ Module, ModuleBuilder }
+//! use zsh_module::{ Module, ModuleBuilder, Result };
 //!
 //! zsh_module::export_module!(setup);
 //!
-//! fn setup() -> Result<Module, ()> {
+//! fn setup() -> Result<Module> {
 //!    todo!()
 //! }
 //! ```
 //!
-//! ## Defining [`Actions`]
-//! The main point part of crating a module is implementing [`Actions`]. Here's an example module:
+//! ## Storing User Data
+//! You can store user data inside a module and have it accessible from any callbacks.
+//! Here's an example module that defines a new `greet` builtin command:
 //! ```rust
-//! use zsh_module::{ Module, ModuleBuilder, Actions, Result }
+//! use zsh_module::{ Module, ModuleBuilder, Actions, Result, Opts, Builtin };
 //!
 //! zsh_module::export_module!(setup);
 //!
 //! struct Greeter;
 //!
-//! impl Actions for Greeter {
-//!     fn boot(mut &self) -> Result<()> {
-//!         println!("Hello, everyone!");
-//!         Ok(())
-//!     }
-//!     fn cleanup(&mut self) -> Result<()> {
-//!         println!("Bye, everyone!");
+//! impl Greeter {
+//!     fn greet_cmd(&mut self, name: &str, args: &[&str], opts: Opts) -> Result<()> {
+//!         println!("Hello, world!");
 //!         Ok(())
 //!     }
 //! }
 //!
 //! fn setup() -> Result<Module> {
 //!     let module = ModuleBuilder::new(Greeter)
+//!         .builtin(Greeter::greet_cmd, Builtin::new("greet"))
 //!         .build();
 //!     Ok(module)
 //! }
@@ -57,7 +55,7 @@
 //! On my machine, the zsh module folder is `/usr/lib/zsh/<zsh-version>/zsh/`.
 //!
 //! If everything went fine, you can load it in zsh using the following command:
-//! ```zsh
+//! ```sh
 //! zmodload zsh/<module-name>
 //! ```
 //!
@@ -65,118 +63,77 @@
 
 #![feature(trait_alias)]
 use std::{
-    borrow::Borrow,
+    any::Any,
     collections::HashMap,
+    error::Error,
     ffi::{CStr, CString},
-    marker::PhantomData,
-    pin::Pin,
 };
 
-use downcast_rs::Downcast;
-
 use features::Features;
-#[doc(hidden)]
-pub use zsh_sys as zsys;
+
+pub use options::Opts;
+use zsh_sys as zsys;
 
 mod features;
+// mod hashtable;
 pub mod log;
-/// This crate's error type.
-pub type Error = Box<dyn std::error::Error>;
+pub mod options;
 
-/// `Result<T, Error>`
-pub type Result<T> = std::result::Result<T, Error>;
+/// A box error type for easier error handling.
+pub type AnyError = Box<dyn Error>;
 
-trait AnyCmd = FnMut(&mut (dyn Actions + 'static), &str, &[&str]) -> Result<()>;
+/// Represents the possibility of an error `E`.
+/// It is basically a [`Result`] that only cares for its [`Err`] variant.
+///
+/// ## Generics
+/// You can (and should) replace the default error type `E` with your own [`Error`].
+pub type Maybe<E = AnyError> = Result<(), E>;
+
+trait AnyCmd = Cmd<dyn Any, AnyError>;
 
 /// This trait corresponds to the function signature of a zsh builtin command handler.
 ///
-/// See [`ModuleBuilder::builtin`] for how to register a command.
-pub trait Cmd<A: Actions> = 'static + FnMut(&mut A, &str, &[&str]) -> Result<()>;
-
-/// This trait allows for defining behaviour to be enacted on parts of the zsh module lifecycle.
+/// ## Generics
+///  - `A` is your User Data. For more info, read [`Storing User Data`]
+///  - `E` is anything that can be turned into a [`Box`]ed error.
 ///
-/// Refer to each method for a description of when it is called
-pub trait Actions: Downcast {
-    /// This method is called right after `setup()`.
-    ///
-    /// If this returns [`Err`], loading is cancelled and [`Self::cleanup`] is not called.
-    fn boot(&mut self) -> Result<()>;
-    /// This method is only called if the module was successfully loaded.
-    ///
-    /// An [`Err`] result means the module is not ready to unload yet. However, zsh will ignore
-    /// this if it is exiting.
-    fn cleanup(&mut self) -> Result<()>;
-}
+/// ## Example
+/// ```rust
+///     fn hello_cmd(data: &mut (), _cmd_name: &str, _args: &[&str], opts: zsh_module::Opts) -> zsh_module::Maybe {
+///         println!("Hello, world!");
+///     }
+/// ```
+///
+/// ## See Also
+/// See [`ModuleBuilder::builtin`] for how to register a command.
+pub trait Cmd<A: Any + ?Sized, E: Into<AnyError>> =
+    'static + FnMut(&mut A, &str, &[&str], Opts) -> Maybe<E>;
 
-downcast_rs::impl_downcast!(Actions);
-
-#[derive(PartialEq, Hash, Debug, Eq)]
-#[doc(hidden)]
-pub struct PinnedCStr(Pin<Box<CStr>>);
-
-impl PinnedCStr {
-    fn new(string: &str) -> Self {
-        Self(Box::into_pin(
-            CString::new(string)
-                .expect("Strings should not contain null byte!")
-                .into_boxed_c_str(),
-        ))
-    }
-    #[allow(dead_code)]
-    fn ptr(&self) -> *const i8 {
-        self.0.as_ptr()
-    }
-    fn ptr_mut(&mut self) -> *mut i8 {
-        unsafe { std::mem::transmute(self.0.as_ptr()) }
-    }
-}
-
-impl std::ops::Deref for PinnedCStr {
-    type Target = CStr;
-
-    fn deref(&self) -> &Self::Target {
-        &*self.0
-    }
-}
-
-impl Borrow<CStr> for PinnedCStr {
-    fn borrow(&self) -> &CStr {
-        &*self.0
-    }
+pub(crate) fn cstr(string: &str) -> CString {
+    CString::new(string).expect("Strings should not contain a null byte!")
 }
 
 /// Properties of a zsh builtin command
 ///
 /// Any chages will reflect on the behaviour of the builtin
-pub struct Builtin<'a, C, A>
-where
-    C: Cmd<A>,
-{
+pub struct Builtin<'a> {
     minargs: i32,
     maxargs: i32,
-    flags: Option<&'static str>,
-    cb: C,
+    flags: Option<&'a str>,
     name: &'a str,
-    _phantom: PhantomData<A>,
 }
 
-impl<'a, A, C> Builtin<'a, C, A>
-where
-    A: Actions,
-    C: Cmd<A> + 'static,
-{
+impl<'a> Builtin<'a> {
     /// Creates a command builtin.
     ///
     /// By default, the builtin can take any amount of arguments (minargs and maxargs are 0 and
-    /// None, respectively) and no flags.
-    pub fn new(name: &'static str, cb: C) -> Self {
+    /// [`None`], respectively) and no flags.
+    pub fn new(name: &'static str) -> Self {
         Self {
             minargs: 0,
             maxargs: -1,
             flags: None,
             name,
-            cb,
-            _phantom: PhantomData,
         }
     }
     /// Sets the minimum amount of arguments allowed by the builtin
@@ -190,48 +147,46 @@ where
         self
     }
     /// Sets flags recognized by the builtin
-    pub fn flags(mut self, value: &'static str) -> Self {
+    pub fn flags(mut self, value: &'a str) -> Self {
         self.flags = Some(value);
         self
     }
 }
 
-type Bintable = HashMap<PinnedCStr, Box<dyn AnyCmd>>;
+type Bintable = HashMap<Box<CStr>, Box<dyn AnyCmd>>;
 
 /// Allows you to build a [`Module`]
 pub struct ModuleBuilder<A> {
-    actions: A,
+    user_data: A,
     binaries: Vec<zsys::builtin>,
     bintable: Bintable,
-    strings: Vec<PinnedCStr>,
+    strings: Vec<Box<CStr>>,
 }
 
 impl<A> ModuleBuilder<A>
 where
-    A: Actions + 'static,
+    A: Any + 'static,
 {
     //! Creates an empty [`Self`] with options ready for configuration.
-    pub fn new(actions: A) -> Self {
+    pub fn new(user_data: A) -> Self {
         Self {
-            actions,
+            user_data,
             binaries: vec![],
             bintable: HashMap::new(),
-            strings: Vec::with_capacity(16),
+            strings: Vec::with_capacity(8),
         }
     }
-    fn hold_string(&mut self, value: &str) -> *mut i8 {
-        let mut value = PinnedCStr::new(value);
-        let ptr = value.ptr_mut();
-        self.strings.push(value);
-        ptr
-    }
     /// Registers a new builtin command
-    pub fn builtin<C: Cmd<A>>(self, builtin: Builtin<C, A>) -> Self {
-        let mut cb = builtin.cb;
-        let closure: Box<dyn AnyCmd> =
-            Box::new(move |actions: &mut (dyn Actions + 'static), name, args| {
-                cb(actions.downcast_mut::<A>().unwrap(), name, args)
-            });
+    pub fn builtin<E, C>(self, mut cb: C, builtin: Builtin) -> Self
+    where
+        E: Into<Box<dyn Error>>,
+        C: Cmd<A, E>,
+    {
+        let closure: Box<dyn AnyCmd> = Box::new(
+            move |data: &mut (dyn Any + 'static), name, args, opts| -> Result<(), AnyError> {
+                cb(data.downcast_mut::<A>().unwrap(), name, args, opts).map_err(E::into)
+            },
+        );
         self.add_builtin(
             builtin.name,
             builtin.minargs,
@@ -240,24 +195,29 @@ where
             closure,
         )
     }
+    fn hold_cstring(&mut self, value: &str) -> *mut i8 {
+        let value = cstr(value).into_boxed_c_str();
+        let ptr = value.as_ptr();
+        self.strings.push(value);
+        ptr as *mut _
+    }
     fn add_builtin(
         mut self,
         name: &str,
         minargs: i32,
         maxargs: i32,
-        flags: Option<&'static str>,
+        options: Option<&str>,
         cb: Box<dyn AnyCmd + 'static>,
     ) -> Self {
-        let mut name = PinnedCStr::new(name);
-        let flags = match flags {
-            Some(flags) => self.hold_string(flags),
+        let name = cstr(name).into_boxed_c_str();
+        let flags = match options {
+            Some(flags) => self.hold_cstring(flags),
             None => std::ptr::null_mut(),
         };
-        let cb = Box::new(cb);
         let raw = zsys::builtin {
             node: zsys::hashnode {
                 next: std::ptr::null_mut(),
-                nam: name.ptr_mut(),
+                nam: name.as_ptr() as *mut _,
                 // !TODO: add flags param
                 flags: 0,
             },
@@ -279,20 +239,19 @@ where
     }
 }
 
-#[allow(dead_code)]
-/// A zsh module. You must build it using [`ModuleBuilder`]
 pub struct Module {
-    actions: Box<dyn Actions>,
+    user_data: Box<dyn Any>,
     features: Features,
     bintable: Bintable,
-    strings: Vec<PinnedCStr>,
+    #[allow(dead_code)]
+    strings: Vec<Box<CStr>>,
 }
 
 impl Module {
-    fn new<A: Actions + 'static>(desc: ModuleBuilder<A>) -> Self {
-        let features = Features::empty().binaries(desc.binaries.into_boxed_slice());
+    fn new<A: Any + 'static>(desc: ModuleBuilder<A>) -> Self {
+        let features = Features::empty().binaries(desc.binaries.into());
         Self {
-            actions: Box::new(desc.actions),
+            user_data: Box::new(desc.user_data),
             features,
             bintable: desc.bintable,
             strings: desc.strings,

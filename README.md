@@ -10,30 +10,27 @@ Take a look at our online [documentation](https://docs.rs/zsh-module/latest/zsh-
 Here's a simple greeter module:
 
 ```rust
- use zsh_module::{ Module, ModuleBuilder, Actions, Result };
+use zsh_module::{ Module, ModuleBuilder, Actions, Result, Opts, Builtin };
 
- zsh_module::impl_hooks!();
+zsh_module::export_module!(setup);
 
- struct Greeter;
+struct Greeter;
 
- impl Actions for Greeter {
-     fn boot(&mut self) -> Result<()> {
-         println!("Hello, everyone!");
-         Ok(())
-     }
-     fn cleanup(&mut self) -> Result<()> {
-         println!("Bye, everyone!");
-         Ok(())
-     }
- }
+impl Greeter {
+    fn greet_cmd(&mut self, name: &str, args: &[&str], opts: Opts) -> Result<()> {
+        println!("Hello, world!");
+        Ok(())
+    }
+}
 
- fn setup() -> Result<Module> {
-     let module = ModuleBuilder::new()
-         .build(Greeter);
-     Ok(module)
- }
+fn setup() -> Result<Module> {
+    let module = ModuleBuilder::new(Greeter)
+        .builtin(Greeter::greet_cmd, Builtin::new("greet"))
+        .build();
+    Ok(module)
+}
 ```
 
-For more information, take at look at the [`example` module][example]
+For more information, take at look at the [`greeter`][example] module.
 
-[example]: https://github.com/Diegovsky/zsh-module-rs/tree/master/greeter
+[greeter]: https://github.com/Diegovsky/zsh-module-rs/tree/master/greeter
