@@ -13,11 +13,11 @@
 //! On your `lib.rs`, you need to put a [`export_module!`] macro call, alongside a `setup` function
 //! (can be called whatever you want):
 //! ```rust
-//! use zsh_module::{ Module, ModuleBuilder, Result };
+//! use zsh_module::{ Module, ModuleBuilder };
 //!
 //! zsh_module::export_module!(setup);
 //!
-//! fn setup() -> Result<Module> {
+//! fn setup() -> Result<Module, Box<dyn std::error:Error>> {
 //!    todo!()
 //! }
 //! ```
@@ -26,20 +26,20 @@
 //! You can store user data inside a module and have it accessible from any callbacks.
 //! Here's an example module that defines a new `greet` builtin command:
 //! ```rust
-//! use zsh_module::{ Module, ModuleBuilder, Actions, Result, Opts, Builtin };
+//! use zsh_module::{ Module, ModuleBuilder, MaybeError, Opts, Builtin };
 //!
 //! zsh_module::export_module!(setup);
 //!
 //! struct Greeter;
 //!
 //! impl Greeter {
-//!     fn greet_cmd(&mut self, name: &str, args: &[&str], opts: Opts) -> Result<()> {
+//!     fn greet_cmd(&mut self, name: &str, args: &[&str], opts: Opts) -> MaybeError {
 //!         println!("Hello, world!");
 //!         Ok(())
 //!     }
 //! }
 //!
-//! fn setup() -> Result<Module> {
+//! fn setup() -> Result<Module, Box<dyn std::error:Error>> {
 //!     let module = ModuleBuilder::new(Greeter)
 //!         .builtin(Greeter::greet_cmd, Builtin::new("greet"))
 //!         .build();
@@ -77,7 +77,7 @@ use zsh_sys as zsys;
 mod features;
 // mod hashtable;
 pub mod log;
-pub mod options;
+mod options;
 
 /// A box error type for easier error handling.
 pub type AnyError = Box<dyn Error>;
@@ -87,7 +87,7 @@ pub type AnyError = Box<dyn Error>;
 ///
 /// ## Generics
 /// You can (and should) replace the default error type `E` with your own [`Error`].
-pub type Maybe<E = AnyError> = Result<(), E>;
+pub type MaybeError<E = AnyError> = Result<(), E>;
 
 trait AnyCmd = Cmd<dyn Any, AnyError>;
 
@@ -100,20 +100,20 @@ trait AnyCmd = Cmd<dyn Any, AnyError>;
 /// ## Example
 /// ```rust
 ///     fn hello_cmd(data: &mut (), _cmd_name: &str, _args: &[&str], opts: zsh_module::Opts) -> zsh_module::Maybe {
-///         println!("Hello, world!");
+///         println!("Hello, worldt!");
 ///     }
 /// ```
 ///
 /// ## See Also
 /// See [`ModuleBuilder::builtin`] for how to register a command.
 pub trait Cmd<A: Any + ?Sized, E: Into<AnyError>> =
-    'static + FnMut(&mut A, &str, &[&str], Opts) -> Maybe<E>;
+    'static + FnMut(&mut A, &str, &[&str], Opts) -> MaybeError<E>;
 
 pub(crate) fn cstr(string: &str) -> CString {
     CString::new(string).expect("Strings should not contain a null byte!")
 }
 
-/// Properties of a zsh builtin command
+/// Properties of a zsh builtin command.
 ///
 /// Any chages will reflect on the behaviour of the builtin
 pub struct Builtin<'a> {
@@ -183,7 +183,7 @@ where
         C: Cmd<A, E>,
     {
         let closure: Box<dyn AnyCmd> = Box::new(
-            move |data: &mut (dyn Any + 'static), name, args, opts| -> Result<(), AnyError> {
+            move |data: &mut (dyn Any + 'static), name, args, opts| -> MaybeError<AnyError> {
                 cb(data.downcast_mut::<A>().unwrap(), name, args, opts).map_err(E::into)
             },
         );
@@ -239,6 +239,7 @@ where
     }
 }
 
+/// Hooks into the Zsh module system and connects it to your `User Data`.
 pub struct Module {
     user_data: Box<dyn Any>,
     features: Features,

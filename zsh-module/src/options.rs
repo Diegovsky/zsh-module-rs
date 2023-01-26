@@ -2,6 +2,7 @@ use std::{ffi::CStr, os::raw::c_char};
 
 use zsh_sys as zsys;
 
+/// Represents all the options passed to a command.
 pub struct Opts {
     raw: zsys::Options,
 }

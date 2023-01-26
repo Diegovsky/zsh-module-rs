@@ -6,26 +6,26 @@ use zsh_sys as zsys;
 
 use crate::cstr;
 
-/// Prints out a warning message from the command `cmd`. See [`warn_named!`]
+/// Prints out a warning message from the command `cmd`. See [`crate::warn_named!`]
 pub fn warn_named(cmd: &str, msg: &str) {
     let cmd_c = cstr(cmd);
     let msg_c = cstr(msg);
     unsafe { zsys::zwarnnam(cmd_c.as_ptr(), msg_c.as_ptr()) }
 }
 
-/// Prints out a warning message. See [`warn!`]
+/// Prints out a warning message. See [`crate::warn!`]
 pub fn warn(msg: &str) {
     let msg_c = cstr(msg);
     unsafe { zsys::zwarn(msg_c.as_ptr()) }
 }
 
-/// Prints out an error message. See [`error!`]
+/// Prints out an error message. See [`crate::error!`]
 pub fn error(msg: &str) {
     let msg_c = cstr(msg);
     unsafe { zsys::zerr(msg_c.as_ptr()) }
 }
 
-/// Prints out an error message from the command `cmd`. See [`error_named!`]
+/// Prints out an error message from the command `cmd`. See [`crate::error_named!`]
 pub fn error_named(cmd: &str, msg: &str) {
     let cmd = cstr(cmd);
     let msg = cstr(msg);
