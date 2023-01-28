@@ -74,9 +74,10 @@
 #![feature(trait_alias)]
 use std::{
     any::Any,
+    borrow::Cow,
     collections::HashMap,
     error::Error,
-    ffi::{CStr, CString, c_char}, borrow::Cow
+    ffi::{c_char, CStr, CString},
 };
 
 use features::Features;
@@ -142,14 +143,15 @@ pub(crate) fn to_cstr(string: impl Into<Vec<u8>>) -> CString {
 /// let cstring = CString::new("Hello, world!").unwrap();
 ///
 /// assert!(matches!(cstr.into_cstr(), Cow::Borrowed(data) if data == cstr));
-/// 
+///
 /// let string = "Hello, world!";
 /// assert!(matches!(ToCString::into_cstr(string), Cow::Owned(cstring)));
 /// ```
 pub trait ToCString {
-    fn into_cstr<'a>(self) -> Cow<'a, CStr> where Self: 'a;
+    fn into_cstr<'a>(self) -> Cow<'a, CStr>
+    where
+        Self: 'a;
 }
-
 
 macro_rules! impl_tocstring {
     ($($type:ty),*) => {
@@ -164,7 +166,10 @@ macro_rules! impl_tocstring {
 impl_tocstring!(Vec<u8>, &[u8], &str, String);
 
 impl ToCString for &CStr {
-    fn into_cstr<'a>(self) -> Cow<'a, CStr> where Self: 'a {
+    fn into_cstr<'a>(self) -> Cow<'a, CStr>
+    where
+        Self: 'a,
+    {
         Cow::Borrowed(self)
     }
 }

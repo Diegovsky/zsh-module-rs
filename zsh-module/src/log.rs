@@ -1,11 +1,13 @@
 //! Zsh native log functions. This module contains high level interfaces to the zsh log functions.
 
-use std::{ffi::{CStr, CString, c_char}, borrow::Cow};
+use std::{
+    borrow::Cow,
+    ffi::{c_char, CStr, CString},
+};
 
 use zsh_sys as zsys;
 
 use crate::ToCString;
-
 
 /// Prints out a warning message from the command `cmd`. See [`crate::warn_named!`]
 pub fn warn_named(cmd: impl ToCString, msg: impl ToCString) {

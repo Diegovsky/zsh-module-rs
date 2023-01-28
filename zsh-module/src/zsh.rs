@@ -1,5 +1,5 @@
 //! A collection of functions used to interact directly with Zsh
-use std::{path::Path, io::Read};
+use std::{io::Read, path::Path};
 
 use crate::{to_cstr, MaybeError, ToCString};
 
@@ -42,7 +42,7 @@ pub fn eval_simple(cmd: &str) -> MaybeError<InternalError> {
 
 // for some shell globals, take a look at Src/init.c:source
 
-// !TODO: implement zsh's stdin 
+// !TODO: implement zsh's stdin
 /* pub fn stdin() -> impl Read {
     std::os::unix::io::FromRawFd::from_raw_fd(zsys::SHIN)
 } */
@@ -51,14 +51,14 @@ pub fn eval_simple(cmd: &str) -> MaybeError<InternalError> {
 #[repr(u32)]
 pub enum SourceError {
     NotFound,
-    InternalError(InternalError)
+    InternalError(InternalError),
 }
 
 impl std::fmt::Display for SourceError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NotFound => write!(f, "File not found"),
-            Self::InternalError(e) => e.fmt(f)
+            Self::InternalError(e) => e.fmt(f),
         }
     }
 }
@@ -73,7 +73,7 @@ pub fn source_file(path: impl ToCString) -> MaybeError<SourceError> {
         Err(match result {
             zsys::source_return_SOURCE_NOT_FOUND => SourceError::NotFound,
             zsys::source_return_SOURCE_ERROR => SourceError::InternalError(InternalError),
-            _ => unreachable!()
+            _ => unreachable!(),
         })
     }
 }

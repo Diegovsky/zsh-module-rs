@@ -3,7 +3,7 @@ use std::{
     sync::atomic::AtomicBool,
 };
 
-use crate::{to_cstr, log, options::Opts, AnyError, Module};
+use crate::{log, options::Opts, to_cstr, AnyError, Module};
 
 use parking_lot::Mutex;
 use zsh_sys as zsys;
