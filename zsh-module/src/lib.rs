@@ -12,20 +12,30 @@
 //! ## Boilerplate
 //! On your `lib.rs`, you need to put a [`export_module!`] macro call, alongside a `setup` function
 //! (can be called whatever you want):
-//! ```rust
+//! ```no_run
 //! use zsh_module::{ Module, ModuleBuilder };
 //!
 //! zsh_module::export_module!(setup);
 //!
-//! fn setup() -> Result<Module, Box<dyn std::error:Error>> {
+//! fn setup() -> Result<Module, Box<dyn std::error::Error>> {
 //!    todo!()
 //! }
+//! ```
+//! ## The `setup` function
+//! A proper `setup` function must return a [`Result<Module, E>`] where `E` implements
+//! [`Error`][std::error::Error]. E.g:
+//! ```no_run
+//! fn setup() -> Result<Module, Box<dyn std::error::Error>> { .. }
+//!
+//! fn setup() -> Result<Module, anyhow::Error> { .. }
+//!
+//! fn setup() -> Result<Module, std::io::Error> { .. }
 //! ```
 //!
 //! ## Storing User Data
 //! You can store user data inside a module and have it accessible from any callbacks.
 //! Here's an example module that defines a new `greet` builtin command:
-//! ```rust
+//! ```
 //! use zsh_module::{ Module, ModuleBuilder, MaybeError, Opts, Builtin };
 //!
 //! zsh_module::export_module!(setup);
@@ -39,7 +49,7 @@
 //!     }
 //! }
 //!
-//! fn setup() -> Result<Module, Box<dyn std::error:Error>> {
+//! fn setup() -> Result<Module, Box<dyn std::error::Error>> {
 //!     let module = ModuleBuilder::new(Greeter)
 //!         .builtin(Greeter::greet_cmd, Builtin::new("greet"))
 //!         .build();
@@ -55,7 +65,7 @@
 //! On my machine, the zsh module folder is `/usr/lib/zsh/<zsh-version>/zsh/`.
 //!
 //! If everything went fine, you can load it in zsh using the following command:
-//! ```sh
+//! ```sh no_run
 //! zmodload zsh/<module-name>
 //! ```
 //!
@@ -66,7 +76,7 @@ use std::{
     any::Any,
     collections::HashMap,
     error::Error,
-    ffi::{CStr, CString},
+    ffi::{CStr, CString, c_char}, borrow::Cow
 };
 
 use features::Features;
@@ -75,9 +85,12 @@ pub use options::Opts;
 use zsh_sys as zsys;
 
 mod features;
-// mod hashtable;
+mod hashtable;
 pub mod log;
 mod options;
+pub mod zsh;
+
+pub use hashtable::HashTable;
 
 /// A box error type for easier error handling.
 pub type AnyError = Box<dyn Error>;
@@ -85,7 +98,7 @@ pub type AnyError = Box<dyn Error>;
 /// Represents the possibility of an error `E`.
 /// It is basically a [`Result`] that only cares for its [`Err`] variant.
 ///
-/// ## Generics
+/// # Generics
 /// You can (and should) replace the default error type `E` with your own [`Error`].
 pub type MaybeError<E = AnyError> = Result<(), E>;
 
@@ -93,47 +106,108 @@ trait AnyCmd = Cmd<dyn Any, AnyError>;
 
 /// This trait corresponds to the function signature of a zsh builtin command handler.
 ///
-/// ## Generics
+/// # Generics
 ///  - `A` is your User Data. For more info, read [`Storing User Data`]
 ///  - `E` is anything that can be turned into a [`Box`]ed error.
 ///
-/// ## Example
-/// ```rust
-///     fn hello_cmd(data: &mut (), _cmd_name: &str, _args: &[&str], opts: zsh_module::Opts) -> zsh_module::Maybe {
-///         println!("Hello, worldt!");
+/// # Example
+/// ```
+///     fn hello_cmd(data: &mut (), _cmd_name: &str, _args: &[&str], opts: zsh_module::Opts) -> zsh_module::MaybeError {
+///         println!("Hello, world!");
+///         Ok(())
 ///     }
 /// ```
 ///
-/// ## See Also
+/// # See Also
 /// See [`ModuleBuilder::builtin`] for how to register a command.
 pub trait Cmd<A: Any + ?Sized, E: Into<AnyError>> =
     'static + FnMut(&mut A, &str, &[&str], Opts) -> MaybeError<E>;
 
-pub(crate) fn cstr(string: &str) -> CString {
+pub(crate) fn to_cstr(string: impl Into<Vec<u8>>) -> CString {
     CString::new(string).expect("Strings should not contain a null byte!")
+}
+
+/// Represents any type that can be represented as a C String. You shouldn't
+/// need to implement this yourself as the most commonly used `string`-y types
+/// already have this implemented.
+///
+/// # Examples
+/// ```
+/// use std::ffi::{CString, CStr};
+/// use std::borrow::Cow;
+///
+/// use zsh_module::ToCString;
+///
+/// let cstr = CStr::from_bytes_with_nul(b"Hello, world!\0").unwrap();
+/// let cstring = CString::new("Hello, world!").unwrap();
+///
+/// assert!(matches!(cstr.into_cstr(), Cow::Borrowed(data) if data == cstr));
+/// 
+/// let string = "Hello, world!";
+/// assert!(matches!(ToCString::into_cstr(string), Cow::Owned(cstring)));
+/// ```
+pub trait ToCString {
+    fn into_cstr<'a>(self) -> Cow<'a, CStr> where Self: 'a;
+}
+
+
+macro_rules! impl_tocstring {
+    ($($type:ty),*) => {
+        $(impl ToCString for $type {
+            fn into_cstr<'a>(self) -> Cow<'a, CStr> where Self: 'a {
+                Cow::Owned(to_cstr(self))
+            }
+        })*
+    };
+}
+
+impl_tocstring!(Vec<u8>, &[u8], &str, String);
+
+impl ToCString for &CStr {
+    fn into_cstr<'a>(self) -> Cow<'a, CStr> where Self: 'a {
+        Cow::Borrowed(self)
+    }
+}
+
+impl ToCString for CString {
+    fn into_cstr<'a>(self) -> Cow<'a, CStr> {
+        Cow::Owned(self)
+    }
+}
+
+impl ToCString for *const c_char {
+    fn into_cstr<'a>(self) -> Cow<'a, CStr> {
+        Cow::Borrowed(unsafe { CStr::from_ptr(self) })
+    }
+}
+
+impl ToCString for *mut c_char {
+    fn into_cstr<'a>(self) -> Cow<'a, CStr> {
+        Cow::Borrowed(unsafe { CStr::from_ptr(self) })
+    }
 }
 
 /// Properties of a zsh builtin command.
 ///
 /// Any chages will reflect on the behaviour of the builtin
-pub struct Builtin<'a> {
+pub struct Builtin {
     minargs: i32,
     maxargs: i32,
-    flags: Option<&'a str>,
-    name: &'a str,
+    flags: Option<CString>,
+    name: CString,
 }
 
-impl<'a> Builtin<'a> {
+impl Builtin {
     /// Creates a command builtin.
     ///
     /// By default, the builtin can take any amount of arguments (minargs and maxargs are 0 and
     /// [`None`], respectively) and no flags.
-    pub fn new(name: &'static str) -> Self {
+    pub fn new(name: &str) -> Self {
         Self {
             minargs: 0,
             maxargs: -1,
             flags: None,
-            name,
+            name: to_cstr(name),
         }
     }
     /// Sets the minimum amount of arguments allowed by the builtin
@@ -147,8 +221,8 @@ impl<'a> Builtin<'a> {
         self
     }
     /// Sets flags recognized by the builtin
-    pub fn flags(mut self, value: &'a str) -> Self {
-        self.flags = Some(value);
+    pub fn flags(mut self, value: &str) -> Self {
+        self.flags = Some(to_cstr(value));
         self
     }
 }
@@ -195,21 +269,21 @@ where
             closure,
         )
     }
-    fn hold_cstring(&mut self, value: &str) -> *mut i8 {
-        let value = cstr(value).into_boxed_c_str();
+    fn hold_cstring(&mut self, value: impl Into<Vec<u8>>) -> *mut i8 {
+        let value = to_cstr(value).into_boxed_c_str();
         let ptr = value.as_ptr();
         self.strings.push(value);
         ptr as *mut _
     }
     fn add_builtin(
         mut self,
-        name: &str,
+        name: CString,
         minargs: i32,
         maxargs: i32,
-        options: Option<&str>,
+        options: Option<CString>,
         cb: Box<dyn AnyCmd + 'static>,
     ) -> Self {
-        let name = cstr(name).into_boxed_c_str();
+        let name = name.into_boxed_c_str();
         let flags = match options {
             Some(flags) => self.hold_cstring(flags),
             None => std::ptr::null_mut(),

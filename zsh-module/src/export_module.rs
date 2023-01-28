@@ -1,18 +1,23 @@
-use std::ffi::{c_char, c_int, CStr};
+use std::{
+    ffi::{c_char, c_int, CStr},
+    sync::atomic::AtomicBool,
+};
 
-use crate::{cstr, log, options::Opts, AnyError, Module};
+use crate::{to_cstr, log, options::Opts, AnyError, Module};
 
 use parking_lot::Mutex;
 use zsh_sys as zsys;
 
 struct ModuleHolder {
     module: Mutex<Option<Module>>,
+    panicked: AtomicBool,
 }
 
 impl ModuleHolder {
     const fn empty() -> Self {
         Self {
             module: parking_lot::const_mutex(None),
+            panicked: AtomicBool::new(false),
         }
     }
 }
@@ -41,30 +46,33 @@ extern "C" fn builtin_callback(
     opts: *mut zsys::options,
     _: i32,
 ) -> i32 {
-    let args = unsafe { strings_from_ptr(std::mem::transmute(args)) };
-    let name = unsafe { CStr::from_ptr(name) };
-    let opts = unsafe { Opts::from_raw(opts) };
+    handle_panic(name, || {
+        let args = unsafe { strings_from_ptr(std::mem::transmute(args)) };
+        let name = unsafe { CStr::from_ptr(name) };
+        let opts = unsafe { Opts::from_raw(opts) };
 
-    let mut mod_ = get_mod();
-    let Module {
-        bintable,
-        user_data,
-        ..
-    } = &mut *mod_;
-    let bin = bintable.get_mut(name).expect("Failed to find binary name");
-    match bin(
-        &mut **user_data,
-        name.to_str().expect("Failed to parse binary name"),
-        &args,
-        opts,
-    ) {
-        Ok(()) => 0,
-        Err(e) => {
-            let msg = cstr(&e.to_string());
-            log::error_named_raw(name, &msg);
-            1
+        let mut module = get_mod();
+        let Module {
+            bintable,
+            user_data,
+            ..
+        } = &mut *module;
+        let bin = bintable.get_mut(name).expect("Failed to find binary name");
+        match bin(
+            &mut **user_data,
+            name.to_str().expect("Failed to parse binary name"),
+            &args,
+            opts,
+        ) {
+            Ok(()) => 0,
+            Err(e) => {
+                let msg = to_cstr(e.to_string());
+                log::error_named(name, msg);
+                1
+            }
         }
-    }
+    })
+    .unwrap_or(65)
 }
 
 fn set_mod(module: Module) {
@@ -72,7 +80,9 @@ fn set_mod(module: Module) {
 }
 
 fn drop_mod() {
-    MODULE.module.lock().take();
+    if !panicked() {
+        MODULE.module.lock().take();
+    }
 }
 
 fn get_mod() -> parking_lot::MappedMutexGuard<'static, Module> {
@@ -85,10 +95,35 @@ unsafe fn mod_get_name<'a>(module: zsys::Module) -> &'a CStr {
     CStr::from_ptr((*module).node.nam)
 }
 
-extern "C" {
-    // This is most likely fine, because it uses the Rust calling convention.
-    // Nothing crashed and the world is still the same, so I'm 99% sure this is ok.
-    #[allow(improper_ctypes)]
+fn panicked() -> bool {
+    MODULE.panicked.load(std::sync::atomic::Ordering::Acquire)
+}
+
+fn handle_panic<F, N, R>(name: N, cb: F) -> Option<R>
+where
+    F: FnOnce() -> R + std::panic::UnwindSafe,
+    N: std::fmt::Debug,
+{
+    let res = std::panic::catch_unwind(|| cb());
+    match res {
+        Ok(ret) => Some(ret),
+        Err(err) => {
+            MODULE
+                .panicked
+                .store(true, std::sync::atomic::Ordering::Release);
+            if let Some(msg) = err.downcast_ref::<&str>() {
+                crate::error!("{:?} Panic: {}", name, msg);
+            } else if let Some(msg) = err.downcast_ref::<String>() {
+                crate::error!("{:?} Panic: {}", name, msg);
+            } else {
+                crate::error!("{:?} Panic: No additional information", name);
+            }
+            None
+        }
+    }
+}
+
+extern "Rust" {
     fn __zsh_rust_setup() -> Result<Module, AnyError>;
 }
 
@@ -97,6 +132,7 @@ extern "C" {
 macro_rules! export_module {
     ($name:ident) => {
         #[no_mangle]
+        #[doc(hidden)]
         fn __zsh_rust_setup() -> ::std::result::Result<$crate::Module, Box<dyn ::std::error::Error>>
         {
             $name().map_err(::std::boxed::Box::from)
@@ -118,23 +154,9 @@ macro_rules! mod_fn {
     (fn $name:ident($mod:ident $(,$arg:ident : $type:ty)*) $block:expr) => {
         #[no_mangle]
         extern "C" fn $name($mod: $crate::zsys::Module $(,$arg: $type)*) -> i32 {
-            let res = std::panic::catch_unwind(|| {
+            handle_panic(unsafe { mod_get_name($mod) }.to_str().unwrap(), || {
                 $block
-            });
-            let name = unsafe { mod_get_name($mod) };
-            match res {
-                Ok(ret) => ret,
-                Err(err) => {
-                    if let Some(msg) = err.downcast_ref::<&str>() {
-                        $crate::error!("{:?} Panic: {}", name, msg);
-                    } else if let Some(msg) = err.downcast_ref::<String>() {
-                        $crate::error!("{:?} Panic: {}", name, msg);
-                    } else {
-                        $crate::error!("{:?} Panic: No additional information", name);
-                    }
-                    65
-                }
-            }
+            }).unwrap_or(65)
         }
     };
 }
