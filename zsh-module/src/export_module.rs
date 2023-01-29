@@ -137,7 +137,20 @@ macro_rules! export_module {
         {
             $name().map_err(::std::boxed::Box::from)
         }
+
+        /* fn boot_(module: zsh_module::Module) -> i32;
+        fn features_(module: zsh_module::Module, features_ptr: *mut *mut *mut c_char);
+        fn enables_(module: zsh_module::Module, enables_ptr: *mut *mut c_int);
+        fn cleanup_(module: zsh_module::Module);
+        fn finish_(module: zsh_module::Module) ; */
     };
+    (@fn $name:ident $(,$arg:ident : $type:ty)*) => {
+        #[no_mangle]
+        #[doc(hidden)]
+        fn $name($($arg: $type),*) -> i32 {
+            $crate::export_module::$name($($arg),*)
+        }
+    }
 }
 
 macro_rules! mod_fn {
@@ -152,8 +165,7 @@ macro_rules! mod_fn {
         );
     };
     (fn $name:ident($mod:ident $(,$arg:ident : $type:ty)*) $block:expr) => {
-        #[no_mangle]
-        extern "C" fn $name($mod: $crate::zsys::Module $(,$arg: $type)*) -> i32 {
+        pub fn $name($mod: $crate::zsys::Module $(,$arg: $type)*) -> i32 {
             handle_panic(unsafe { mod_get_name($mod) }.to_str().unwrap(), || {
                 $block
             }).unwrap_or(65)

@@ -62,11 +62,11 @@
 //! and name it whatever you want, the only requirement is that it ends with your platforms's
 //! dynamic loadable library extension.
 //!
-//! On my machine, the zsh module folder is `/usr/lib/zsh/<zsh-version>/zsh/`.
+//! On my machine, the zsh module folder is `/usr/lib/zsh/<zsh-version>/`.
 //!
 //! If everything went fine, you can load it in zsh using the following command:
 //! ```sh no_run
-//! zmodload zsh/<module-name>
+//! zmodload <module-name>
 //! ```
 //!
 //! That is it!
@@ -340,4 +340,5 @@ impl Module {
 }
 
 #[cfg(feature = "export_module")]
-mod export_module;
+#[doc(hidden)]
+pub mod export_module;
