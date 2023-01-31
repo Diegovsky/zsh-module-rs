@@ -15,7 +15,7 @@
 //! ```no_run
 //! use zsh_module::{ Module, ModuleBuilder };
 //!
-//! zsh_module::export_module!(setup);
+//! zsh_module::export_module!(my_module, setup);
 //!
 //! fn setup() -> Result<Module, Box<dyn std::error::Error>> {
 //!    todo!()
@@ -24,7 +24,7 @@
 //! ## The `setup` function
 //! A proper `setup` function must return a [`Result<Module, E>`] where `E` implements
 //! [`Error`][std::error::Error]. E.g:
-//! ```no_run
+//! ```ignore
 //! fn setup() -> Result<Module, Box<dyn std::error::Error>> { .. }
 //!
 //! fn setup() -> Result<Module, anyhow::Error> { .. }
@@ -34,27 +34,9 @@
 //!
 //! ## Storing User Data
 //! You can store user data inside a module and have it accessible from any callbacks.
-//! Here's an example module that defines a new `greet` builtin command:
-//! ```
-//! use zsh_module::{ Module, ModuleBuilder, MaybeError, Opts, Builtin };
-//!
-//! zsh_module::export_module!(setup);
-//!
-//! struct Greeter;
-//!
-//! impl Greeter {
-//!     fn greet_cmd(&mut self, name: &str, args: &[&str], opts: Opts) -> MaybeError {
-//!         println!("Hello, world!");
-//!         Ok(())
-//!     }
-//! }
-//!
-//! fn setup() -> Result<Module, Box<dyn std::error::Error>> {
-//!     let module = ModuleBuilder::new(Greeter)
-//!         .builtin(Greeter::greet_cmd, Builtin::new("greet"))
-//!         .build();
-//!     Ok(module)
-//! }
+//! Here's an example module, located at  that defines a new `greet` builtin command:
+//! ```no_run
+#![doc=include_str!("../../greeter/src/lib.rs")]
 //! ```
 //!
 //! ## Installing
@@ -325,6 +307,7 @@ pub struct Module {
     bintable: Bintable,
     #[allow(dead_code)]
     strings: Vec<Box<CStr>>,
+    name: Option<&'static str>,
 }
 
 impl Module {
@@ -335,6 +318,7 @@ impl Module {
             features,
             bintable: desc.bintable,
             strings: desc.strings,
+            name: None,
         }
     }
 }

@@ -1,11 +1,12 @@
 use zsh_module::{Builtin, MaybeError, Module, ModuleBuilder, Opts};
 
-zsh_module::export_module!(setup);
+// Notice how this module gets installed as `rgreeter`
+zsh_module::export_module!(rgreeter, setup);
 
 struct Greeter;
 
 impl Greeter {
-    fn greet_cmd(&mut self, name: &str, args: &[&str], opts: Opts) -> MaybeError {
+    fn greet_cmd(&mut self, _name: &str, _args: &[&str], _opts: Opts) -> MaybeError {
         println!("Hello, world!");
         Ok(())
     }

@@ -43,7 +43,7 @@ pub fn error_named(cmd: impl ToCString, msg: impl ToCString) {
 ///     if args.len() > 1 {
 ///         zsh_module::warn_named!(name, "too much arguments!");
 ///     }
-///    // code
+///     todo!()
 /// }
 ///
 /// ```
@@ -60,9 +60,10 @@ macro_rules! warn_named {
 /// fn my_cd(action: &mut (), name: &str, args: &[&str]) -> zsh_module::MaybeError {
 ///     if args.len() > 1 {
 ///         zsh_module::error_named!(name, "too much arguments!");
-///         return Err(/* error */)
+///         return Err(todo!())
 ///     }
 ///    // code
+///    todo!()
 /// }
 ///
 /// ```
@@ -94,7 +95,7 @@ macro_rules! warn {
 /// let number = 10;
 /// if number != 42 {
 ///     zsh_module::error!("Wrong number, expected 42, got {}", number);
-///     return Err(Not42Error)
+///     return /* error */
 /// }
 ///
 /// ```
