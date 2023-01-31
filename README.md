@@ -1,7 +1,8 @@
-<div id="badges">
-    <img src="https://img.shields.io/crates/v/zsh-module">
-</div>
-# Zsh Module
+# Zsh Module &emsp; [![Latest Version]][crates.io]
+
+[Latest Version]: https://img.shields.io/crates/v/zsh-module
+[crates.io]: https://crates.io/crates/zsh-module
+
 This is a high level crate that allows you to define your own zsh module. It is in a very early state but it can be used to define commands.
 
 In the future, most zsh module functionality will be added. Feel free to send a PR if you would like to add more functionality :)
