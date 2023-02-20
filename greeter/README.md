@@ -1,4 +1,4 @@
-# how to install
+# How to Install
 ```bash
 # build and install module into zsh module_path
 make TARGET_FOLDER=$module_path
