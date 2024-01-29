@@ -5,6 +5,9 @@ use zsh_sys as zsys;
 use crate::to_cstr;
 
 /// A wrapper around Zsh's hashtable implementation
+///
+/// TODO: Finish this
+#[derive(Debug)]
 pub struct HashTable {
     raw: zsys::HashTable,
 }
