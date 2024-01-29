@@ -1,19 +1,22 @@
 //! A collection of functions used to interact directly with Zsh
-use std::{io::Read, path::Path};
+use std::{
+    io::Read,
+    path::{Path, PathBuf},
+};
 
-use crate::{to_cstr, MaybeError, ToCString};
+use crate::{to_cstr, ErrorCode, MaybeZError, ToCString, ZError};
 
 use zsh_sys as zsys;
 
-#[derive(Debug)]
-pub struct InternalError;
+// #[derive(Debug)]
+// pub struct InternalError;
 
-impl std::fmt::Display for InternalError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Something went wrong while sourcing the file")
-    }
-}
-impl std::error::Error for InternalError {}
+// impl std::fmt::Display for InternalError {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         write!(f, "Something went wrong while sourcing the file")
+//     }
+// }
+// impl std::error::Error for InternalError {}
 
 /// Evaluates a zsh script string
 /// # Examples
@@ -22,18 +25,23 @@ impl std::error::Error for InternalError {}
 /// zsh_module::zsh::eval_simple("function func() { echo 'Hello from func' }").unwrap();
 /// ```
 ///
-pub fn eval_simple(cmd: &str) -> MaybeError<InternalError> {
+pub fn eval_simple<S>(cmd: S) -> MaybeZError
+where
+    S: AsRef<str>,
+{
     static ZSH_CONTEXT_STRING: &[u8] = b"zsh-module-rs-eval\0";
+    let og_cmd = cmd.as_ref();
     unsafe {
-        let cmd = to_cstr(cmd);
+        let cmd = to_cstr(cmd.as_ref());
         zsys::execstring(
             cmd.as_ptr() as *mut _,
             1,
             0,
             ZSH_CONTEXT_STRING.as_ptr() as *mut _,
         );
-        if zsys::errflag != 0 {
-            Err(InternalError)
+        let errflag = zsys::errflag;
+        if errflag != 0 {
+            Err(ZError::EvalError(errflag as ErrorCode))
         } else {
             Ok(())
         }
@@ -47,33 +55,22 @@ pub fn eval_simple(cmd: &str) -> MaybeError<InternalError> {
     std::os::unix::io::FromRawFd::from_raw_fd(zsys::SHIN)
 } */
 
-#[derive(Debug)]
-#[repr(u32)]
-pub enum SourceError {
-    NotFound,
-    InternalError(InternalError),
-}
-
-impl std::fmt::Display for SourceError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::NotFound => write!(f, "File not found"),
-            Self::InternalError(e) => e.fmt(f),
-        }
+pub fn source_file<P>(path: P) -> MaybeZError
+where
+    P: AsRef<Path>,
+{
+    let path = path.as_ref();
+    if !path.is_file() {
+        // Don't source it if we know it can't be sourced
+        // Prefer to use the internal rust ZError type for this before finding out the hard way.
+        return Err(ZError::FileNotFound(path.into()));
     }
-}
-impl std::error::Error for SourceError {}
 
-pub fn source_file(path: impl ToCString) -> MaybeError<SourceError> {
-    let path = path.into_cstr();
-    let result = unsafe { zsys::source(path.as_ptr() as *mut _) };
+    let path_str = path.into_cstr();
+    let result = unsafe { zsys::source(path_str.as_ptr() as *mut _) };
     if result == zsys::source_return_SOURCE_OK {
         Ok(())
     } else {
-        Err(match result {
-            zsys::source_return_SOURCE_NOT_FOUND => SourceError::NotFound,
-            zsys::source_return_SOURCE_ERROR => SourceError::InternalError(InternalError),
-            _ => unreachable!(),
-        })
+        Err(ZError::SourceError(result as ErrorCode))
     }
 }

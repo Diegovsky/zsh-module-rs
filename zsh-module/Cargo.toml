@@ -12,5 +12,5 @@ default = ["export_module"]
 
 [dependencies]
 parking_lot = "0.12.1"
-paste = "1.0.11"
-zsh-sys = {path="../zsh-sys", version = "0.1"}
+paste = "1.0.14"
+zsh-sys = { path = "../zsh-sys", version = "0.1" }

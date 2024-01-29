@@ -3,7 +3,7 @@ use std::{
     sync::atomic::AtomicBool,
 };
 
-use crate::{log, options::Opts, to_cstr, AnyError, MaybeError, Module};
+use crate::{log, options::Opts, to_cstr, Module};
 
 use parking_lot::Mutex;
 use zsh_sys as zsys;
@@ -99,14 +99,14 @@ fn panicked() -> bool {
     MODULE.panicked.load(std::sync::atomic::Ordering::Acquire)
 }
 
-pub fn handle_maybe_error<E>(error: MaybeError<E>) -> i32
+pub fn handle_maybe_error<E>(error: Result<(), E>) -> i32
 where
     E: std::fmt::Display,
 {
     match error {
         Ok(()) => 0,
         Err(e) => {
-            let name = get_mod().name.unwrap();
+            let name = get_mod().name.unwrap_or("Unknown module");
             crate::error!("{:?}: {}", name, e);
             1
         }

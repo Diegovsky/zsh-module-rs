@@ -10,4 +10,4 @@ license = "MIT"
 [dependencies]
 
 [build-dependencies]
-bindgen = '0.63'
+bindgen = '0.69.2'

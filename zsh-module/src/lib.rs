@@ -36,7 +36,7 @@
 //! You can store user data inside a module and have it accessible from any callbacks.
 //! Here's an example module, located at  that defines a new `greet` builtin command:
 //! ```no_run
-//! use zsh_module::{Builtin, MaybeError, Module, ModuleBuilder, Opts};
+//! use zsh_module::{Builtin, MaybeZError, Module, ModuleBuilder, Opts};
 //!
 //! // Notice how this module gets installed as `rgreeter`
 //! zsh_module::export_module!(rgreeter, setup);
@@ -44,7 +44,7 @@
 //! struct Greeter;
 //!
 //! impl Greeter {
-//!     fn greet_cmd(&mut self, _name: &str, _args: &[&str], _opts: Opts) -> MaybeError {
+//!     fn greet_cmd(&mut self, _name: &str, _args: &[&str], _opts: Opts) -> MaybeZError {
 //!         println!("Hello, world!");
 //!         Ok(())
 //!     }
@@ -59,11 +59,22 @@
 //! ```
 //!
 //! ## Installing
-//! When your module is ready, copy your shared library to your distribution's zsh module folder
+//! When your module is ready, copy your shared library to any folder in your `$module_path`
 //! and name it whatever you want, the only requirement is that it ends with your platforms's
 //! dynamic loadable library extension.
 //!
-//! On my machine, the zsh module folder is `/usr/lib/zsh/<zsh-version>/`.
+//! To add a folder to your `$module_path`, add the following code to your `.zshrc`:
+//!
+//! ```sh no_run
+//! typeset -aUg module_path
+//! module_path+=($HOME/.zsh/modules)
+//! ```
+//!
+//! For development, you can consider symlinking the library into that folder in your `$module_path`.
+//!
+//! ```sh no_run
+//! ln -s "$PWD/target/debug/libmodule.so" "$HOME/.zsh/modules/module.so"
+//! ```
 //!
 //! If everything went fine, you can load it in zsh using the following command:
 //! ```sh no_run
@@ -72,13 +83,17 @@
 //!
 //! That is it!
 
+// My goal is to eliminate the need for this nightly feature.
 #![feature(trait_alias)]
+
 use std::{
     any::Any,
     borrow::Cow,
     collections::HashMap,
-    error::Error,
-    ffi::{c_char, CStr, CString},
+    ffi::{c_char, CStr, CString, OsStr},
+    fmt, io,
+    os::unix::ffi::OsStrExt,
+    path::*,
 };
 
 use features::Features;
@@ -90,21 +105,19 @@ mod features;
 mod hashtable;
 pub mod log;
 mod options;
+pub mod terminal;
+pub mod types;
+// pub mod variable;
 pub mod zsh;
 
+pub use crate::types::{
+    cstring::{to_cstr, ToCString},
+    error::*,
+};
 pub use hashtable::HashTable;
 
-/// A box error type for easier error handling.
-pub type AnyError = Box<dyn Error>;
-
-/// Represents the possibility of an error `E`.
-/// It is basically a [`Result`] that only cares for its [`Err`] variant.
-///
-/// # Generics
-/// You can (and should) replace the default error type `E` with your own [`Error`].
-pub type MaybeError<E = AnyError> = Result<(), E>;
-
-trait AnyCmd = Cmd<dyn Any, AnyError>;
+// TODO: Rewrite this to compile in stable rust
+trait AnyCmd = Cmd<dyn Any, ZError>;
 
 /// This trait corresponds to the function signature of a zsh builtin command handler.
 ///
@@ -114,84 +127,26 @@ trait AnyCmd = Cmd<dyn Any, AnyError>;
 ///
 /// # Example
 /// ```
-///     fn hello_cmd(data: &mut (), _cmd_name: &str, _args: &[&str], opts: zsh_module::Opts) -> zsh_module::MaybeError {
+///     fn hello_cmd(data: &mut (), _cmd_name: &str, _args: &[&str], opts: zsh_module::Opts) -> zsh_module::MaybeZError {
 ///         println!("Hello, world!");
+///         let some_result = some_function(some_opts);
+///         // In this example, the eerror from `some_result` does not fit nicely into a Zerror
+///         if let Err(e) = some_result {
+///             return Err(ZError::Runtime(e.to_string()));
+///         }
 ///         Ok(())
 ///     }
 /// ```
 ///
 /// # See Also
 /// See [`ModuleBuilder::builtin`] for how to register a command.
-pub trait Cmd<A: Any + ?Sized, E: Into<AnyError>> =
-    'static + FnMut(&mut A, &str, &[&str], Opts) -> MaybeError<E>;
+pub trait Cmd<A: Any + ?Sized, E: Into<ZError>> =
+    'static + FnMut(&mut A, &str, &[&str], Opts) -> Result<(), E>;
 
-pub(crate) fn to_cstr(string: impl Into<Vec<u8>>) -> CString {
-    CString::new(string).expect("Strings should not contain a null byte!")
-}
-
-/// Represents any type that can be represented as a C String. You shouldn't
-/// need to implement this yourself as the most commonly used `string`-y types
-/// already have this implemented.
-///
-/// # Examples
-/// ```
-/// use std::ffi::{CString, CStr};
-/// use std::borrow::Cow;
-///
-/// use zsh_module::ToCString;
-///
-/// let cstr = CStr::from_bytes_with_nul(b"Hello, world!\0").unwrap();
-/// let cstring = CString::new("Hello, world!").unwrap();
-///
-/// assert!(matches!(cstr.into_cstr(), Cow::Borrowed(data) if data == cstr));
-///
-/// let string = "Hello, world!";
-/// assert!(matches!(ToCString::into_cstr(string), Cow::Owned(cstring)));
-/// ```
-pub trait ToCString {
-    fn into_cstr<'a>(self) -> Cow<'a, CStr>
-    where
-        Self: 'a;
-}
-
-macro_rules! impl_tocstring {
-    ($($type:ty),*) => {
-        $(impl ToCString for $type {
-            fn into_cstr<'a>(self) -> Cow<'a, CStr> where Self: 'a {
-                Cow::Owned(to_cstr(self))
-            }
-        })*
-    };
-}
-
-impl_tocstring!(Vec<u8>, &[u8], &str, String);
-
-impl ToCString for &CStr {
-    fn into_cstr<'a>(self) -> Cow<'a, CStr>
-    where
-        Self: 'a,
-    {
-        Cow::Borrowed(self)
-    }
-}
-
-impl ToCString for CString {
-    fn into_cstr<'a>(self) -> Cow<'a, CStr> {
-        Cow::Owned(self)
-    }
-}
-
-impl ToCString for *const c_char {
-    fn into_cstr<'a>(self) -> Cow<'a, CStr> {
-        Cow::Borrowed(unsafe { CStr::from_ptr(self) })
-    }
-}
-
-impl ToCString for *mut c_char {
-    fn into_cstr<'a>(self) -> Cow<'a, CStr> {
-        Cow::Borrowed(unsafe { CStr::from_ptr(self) })
-    }
-}
+// TODO: Rewrite it like this to compile in stable rust
+// pub trait Cmd<A: Any + ?Sized, E: Into<ZError>>:
+//     'static + FnMut(&mut A, &str, &[&str], Opts) -> Result<(), E>
+// {}
 
 /// Properties of a zsh builtin command.
 ///
@@ -241,6 +196,7 @@ pub struct ModuleBuilder<A> {
     binaries: Vec<zsys::builtin>,
     bintable: Bintable,
     strings: Vec<Box<CStr>>,
+    // paramtab_hook: i,
 }
 
 impl<A> ModuleBuilder<A>
@@ -257,13 +213,15 @@ where
         }
     }
     /// Registers a new builtin command
+    ///
+    /// TODO: This requires the trait alias thing. Idk how to rewrite it to use the stable rust {} pattern.
     pub fn builtin<E, C>(self, mut cb: C, builtin: Builtin) -> Self
     where
-        E: Into<Box<dyn Error>>,
+        E: Into<ZError>,
         C: Cmd<A, E>,
     {
         let closure: Box<dyn AnyCmd> = Box::new(
-            move |data: &mut (dyn Any + 'static), name, args, opts| -> MaybeError<AnyError> {
+            move |data: &mut (dyn Any + 'static), name, args, opts| -> Result<(), ZError> {
                 cb(data.downcast_mut::<A>().unwrap(), name, args, opts).map_err(E::into)
             },
         );
