@@ -4,6 +4,8 @@ use std::{
     path::*,
 };
 
+/// An internal helper function used to convert stringlikes into CStrings.
+/// You will likely never need to use this directly.
 pub fn to_cstr(string: impl Into<Vec<u8>>) -> CString {
     CString::new(string).expect("Strings should not contain a null byte!")
 }

@@ -61,6 +61,8 @@ impl FilePath {
 
 impl std::fmt::Display for FilePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // I am not using path.display() here because I always want the String
+        // representations of the PathBuf to be used. This ensures we keep them in sync.
         self.string.fmt(f)
     }
 }

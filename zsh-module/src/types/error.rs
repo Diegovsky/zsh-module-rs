@@ -103,14 +103,6 @@ where
     }
 }
 
-// just here for backwards-compatibility
-// TODO: Remove this!!
-// impl From<Box<dyn std::error::Error>> for Zerror {
-//     fn from(_: Box<dyn std::error::Error>) -> Self {
-//         Self::Unknown
-//     }
-// }
-
 /// Represents the possibility of an error `E`.
 /// It is basically a [`Result`] that only cares for its [`Err`] variant.
 ///
