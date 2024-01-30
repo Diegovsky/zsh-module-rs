@@ -2,12 +2,6 @@ use std::{fs::DirEntry, path::*, str::FromStr};
 
 use crate::{ToCString, Zerror};
 
-macro_rules! fnf {
-    ($file:expr) => {
-        Err(Zerror::FileNotFound($file))
-    };
-}
-
 /// A helper struct to represent an owned filepath
 ///
 /// Caches the internal path, as well as the display string and its character length.
@@ -30,7 +24,7 @@ impl FilePath {
     {
         let path = pathlike.as_ref().to_path_buf();
         if !path.exists() {
-            return fnf!(path);
+            return Err(Zerror::FileNotFound(path));
         }
 
         let string = path.to_string_lossy().to_string();
