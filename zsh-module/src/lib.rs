@@ -59,11 +59,22 @@
 //! ```
 //!
 //! ## Installing
-//! When your module is ready, copy your shared library to your distribution's zsh module folder
+//! When your module is ready, copy your shared library to any folder in your `$module_path`
 //! and name it whatever you want, the only requirement is that it ends with your platforms's
 //! dynamic loadable library extension.
 //!
-//! On my machine, the zsh module folder is `/usr/lib/zsh/<zsh-version>/`.
+//! To add a folder to your `$module_path`, add the following code to your `.zshrc`:
+//!
+//! ```sh no_run
+//! typeset -aUg module_path
+//! module_path+=($HOME/.zsh/modules)
+//! ```
+//!
+//! For development, you can consider symlinking the library into that folder in your `$module_path`.
+//!
+//! ```sh no_run
+//! ln -s "$PWD/target/debug/libmodule.so" "$HOME/.zsh/modules/module.so"
+//! ```
 //!
 //! If everything went fine, you can load it in zsh using the following command:
 //! ```sh no_run
