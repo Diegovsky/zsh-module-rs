@@ -83,3 +83,22 @@ where
         })
     }
 }
+
+/// Changes the current working directory, idk if this works or not
+pub fn cd<P>(path: P) -> MaybeZerror<Zerror>
+where
+    P: AsRef<Path>,
+{
+    let path = path.as_ref();
+    if !path.is_dir() {
+        return Err(Zerror::FileNotFound(path.into()));
+    }
+    let cd_operation = unsafe { zsh_sys::chdir(path.into_cstr().as_ptr() as *mut _) };
+
+    // TODO: Make actually good error handling
+    if cd_operation == 0 {
+        Ok(())
+    } else {
+        Err(Zerror::CdError((path.into(), cd_operation)))
+    }
+}

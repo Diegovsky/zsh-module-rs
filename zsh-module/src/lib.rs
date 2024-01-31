@@ -105,6 +105,7 @@ mod features;
 mod hashtable;
 pub mod log;
 mod options;
+pub mod terminal;
 pub mod types;
 pub mod variable;
 pub mod zsh;

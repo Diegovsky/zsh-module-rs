@@ -17,6 +17,9 @@ pub enum Zerror {
     SourceError(PathBuf),
     /// The specified file could not be found.
     FileNotFound(PathBuf),
+    /// Could not change working directory
+    /// TODO: i32 is the exit code?
+    CdError((PathBuf, i32)),
 
     /// Error interacting with variables
     Var(variable::VarError),
@@ -43,6 +46,9 @@ impl fmt::Display for Zerror {
             ),
             Self::Var(e) => write!(f, "Variable error: {}", e),
             Self::FileNotFound(path) => write!(f, "File not found: {}", path.display()),
+            Self::CdError((p, c)) => {
+                write!(f, "Could not change directory to {}: {}", p.display(), c)
+            }
 
             Self::Conversion(msg) => write!(f, "Conversion error: {}", msg),
         }
