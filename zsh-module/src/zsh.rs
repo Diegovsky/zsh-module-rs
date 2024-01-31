@@ -1,7 +1,10 @@
 //! A collection of functions used to interact directly with Zsh
-use std::{io::Read, path::Path};
+use std::{
+    io::Read,
+    path::{Path, PathBuf},
+};
 
-use crate::{to_cstr, ErrorCode, MaybeZerror, ToCString, ZError, ZErrorExt};
+use crate::{to_cstr, ErrorCode, MaybeZerror, ToCString, ZError, ZErrorExt, ZResultExt};
 
 use zsh_sys as zsys;
 
@@ -97,16 +100,13 @@ where
 /// Changes the current working directory, idk if this works or not
 pub fn cd<P>(path: P) -> MaybeZerror
 where
-    P: AsRef<Path>,
+    P: Into<PathBuf>,
 {
-    let path = path.as_ref();
+    let path = path.into();
     // // I want to return the zerror type specific for a path not found here.
     // Redundant, now that io ZErrors can take the invalid filepath
     // if !path.is_dir() {
     //     return Err(ZError::FileNotFound(path.into()));
     // }
-    match std::env::set_current_dir(path) {
-        Ok(()) => Ok(()),
-        Err(e) => Err(e.into_zerror(path.into())),
-    }
+    std::env::set_current_dir(&path).into_zresult(path)
 }

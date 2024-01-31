@@ -142,3 +142,18 @@ impl ZErrorExt for env::VarError {
         ZError::Env((input, self))
     }
 }
+
+/// A helpful wrapper around [`ZResult`] for Result types that need it.
+/// Please see [`ZErrorExt`] for more information.
+pub trait ZResultExt<T> {
+    type OffendingInput;
+    fn into_zresult(self, input: Self::OffendingInput) -> ZResult<T>;
+}
+
+// TODO: Use generics for this
+impl<T> ZResultExt<T> for io::Result<T> {
+    type OffendingInput = PathBuf;
+    fn into_zresult(self, input: Self::OffendingInput) -> ZResult<T> {
+        self.map_err(|e| e.into_zerror(input.into()))
+    }
+}
