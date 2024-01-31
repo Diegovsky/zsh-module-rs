@@ -1,6 +1,9 @@
 use crate::variable;
 use std::{env, fmt, io, path::*};
 
+/// The internal error code type.
+pub type ErrorCode = isize;
+
 // TODO: Rewrite all doc comments to use new API stuff
 /// A zsh error meant for use in this library internally
 ///
@@ -10,7 +13,7 @@ pub enum ZError {
     /// A low-level return type for zsh internal functions that return integer return types
     ///
     /// TODO: Rewrite zsh-sys stuff to use this (if a better solution cannot be implemented)
-    Return(isize),
+    Return(ErrorCode),
 
     /// A std::io::Error wrapper, including the filepath that caused the error
     Io((PathBuf, io::Error)),
@@ -21,9 +24,9 @@ pub enum ZError {
     Env((String, env::VarError)),
 
     /// An error occurring when evaluating a string
-    EvalError(String),
+    EvalError((String, ErrorCode)),
     /// An error occurring when sourcing a file
-    SourceError(PathBuf),
+    SourceError((PathBuf, ErrorCode)),
     /// The specified file could not be found.
     FileNotFound(PathBuf),
 
@@ -41,15 +44,10 @@ impl fmt::Display for ZError {
             Self::Io((p, i)) => write!(f, "Io error from filepath {}: {i}", p.display()),
             Self::Env((v, e)) => write!(f, "Var error from variable {v}: {e}"),
 
-            Self::EvalError(cmd) => write!(
-                f,
-                "Something went wrong while evaluating the command: {cmd}"
-            ),
-            Self::SourceError(path) => write!(
-                f,
-                "Something went wrong while sourcing the file: {}",
-                path.display()
-            ),
+            Self::EvalError((c, e)) => write!(f, "Exit code {e} while evaluating the command: {c}"),
+            Self::SourceError((p, e)) => {
+                write!(f, "Exit code {e} while sourcing the file: {}", p.display())
+            }
             Self::Var(v) => v.fmt(f),
             Self::FileNotFound(path) => write!(f, "File not found: {}", path.display()),
 
@@ -67,8 +65,8 @@ impl fmt::Display for ZError {
 //         Self::Env(e)
 //     }
 // }
-impl From<isize> for ZError {
-    fn from(value: isize) -> Self {
+impl From<ErrorCode> for ZError {
+    fn from(value: ErrorCode) -> Self {
         Self::Return(value)
     }
 }

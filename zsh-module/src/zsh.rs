@@ -1,7 +1,7 @@
 //! A collection of functions used to interact directly with Zsh
 use std::{io::Read, path::Path};
 
-use crate::{to_cstr, MaybeZerror, ToCString, ZError, ZErrorExt};
+use crate::{to_cstr, ErrorCode, MaybeZerror, ToCString, ZError, ZErrorExt};
 
 use zsh_sys as zsys;
 
@@ -22,19 +22,26 @@ use zsh_sys as zsys;
 /// zsh_module::zsh::eval_simple("function func() { echo 'Hello from func' }").unwrap();
 /// ```
 ///
-pub fn eval_simple(cmd: &str) -> MaybeZerror {
+pub fn eval_simple<S>(cmd: S) -> MaybeZerror
+where
+    S: AsRef<str>,
+{
     static ZSH_CONTEXT_STRING: &[u8] = b"zsh-module-rs-eval\0";
-    let og_cmd = cmd;
+    let og_cmd = cmd.as_ref();
     unsafe {
-        let cmd = to_cstr(cmd);
+        let cmd = to_cstr(cmd.as_ref());
         zsys::execstring(
             cmd.as_ptr() as *mut _,
             1,
             0,
             ZSH_CONTEXT_STRING.as_ptr() as *mut _,
         );
-        if zsys::errflag != 0 {
-            Err(ZError::EvalError(String::from(og_cmd)))
+        let errflag = zsys::errflag;
+        if errflag != 0 {
+            Err(ZError::EvalError((
+                String::from(og_cmd),
+                errflag as ErrorCode,
+            )))
         } else {
             Ok(())
         }
@@ -70,17 +77,20 @@ where
     P: AsRef<Path>,
 {
     let path = path.as_ref();
+    if !path.is_file() {
+        // Don't source it if we know it can't be sourced
+        return Err(ZError::FileNotFound(path.to_path_buf()));
+    }
 
     let path_str = path.into_cstr();
     let result = unsafe { zsys::source(path_str.as_ptr() as *mut _) };
     if result == zsys::source_return_SOURCE_OK {
         Ok(())
     } else {
-        Err(match result {
-            zsys::source_return_SOURCE_NOT_FOUND => ZError::FileNotFound(path.to_path_buf()),
-            zsys::source_return_SOURCE_ERROR => ZError::SourceError(path.to_path_buf()),
-            _ => unreachable!("Unknown source return value"),
-        })
+        Err(ZError::SourceError((
+            path.to_path_buf(),
+            result as ErrorCode,
+        )))
     }
 }
 
