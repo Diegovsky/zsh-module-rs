@@ -12,10 +12,13 @@ pub enum ZError {
     /// TODO: Rewrite zsh-sys stuff to use this (if a better solution cannot be implemented)
     Return(isize),
 
-    /// A std::io::Error wrapper
-    Io(io::Error),
+    /// A std::io::Error wrapper, including the filepath that caused the error
+    Io((PathBuf, io::Error)),
+
+    // /// A std::io::Error wrapper designed for use by library users. Please do not use this.
+    // RawIo(io::Error),
     /// A std::env::VarError wrapper
-    Env(env::VarError),
+    Env((String, env::VarError)),
 
     /// An error occurring when evaluating a string
     EvalError(String),
@@ -35,8 +38,8 @@ impl fmt::Display for ZError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Return(i) => write!(f, "Received return value: {i}"),
-            Self::Io(i) => i.fmt(f),
-            Self::Env(i) => i.fmt(f),
+            Self::Io((p, i)) => write!(f, "Io error from filepath {}: {i}", p.display()),
+            Self::Env((v, e)) => write!(f, "Var error from variable {v}: {e}"),
 
             Self::EvalError(cmd) => write!(
                 f,
@@ -47,27 +50,26 @@ impl fmt::Display for ZError {
                 "Something went wrong while sourcing the file: {}",
                 path.display()
             ),
-            Self::Var(e) => e.fmt(f),
+            Self::Var(v) => v.fmt(f),
             Self::FileNotFound(path) => write!(f, "File not found: {}", path.display()),
 
             Self::Conversion(msg) => write!(f, "Conversion error: {}", msg),
         }
     }
 }
-impl From<io::Error> for ZError {
-    fn from(e: io::Error) -> Self {
-        Self::Io(e)
-    }
-}
+// impl From<io::Error> for ZError {
+//     fn from(e: io::Error) -> Self {
+//         Self::Io(e)
+//     }
+// }
+// impl From<env::VarError> for ZError {
+//     fn from(e: env::VarError) -> Self {
+//         Self::Env(e)
+//     }
+// }
 impl From<isize> for ZError {
     fn from(value: isize) -> Self {
         Self::Return(value)
-    }
-}
-
-impl From<env::VarError> for ZError {
-    fn from(e: env::VarError) -> Self {
-        Self::Env(e)
     }
 }
 impl From<variable::VarError> for ZError {
@@ -121,3 +123,24 @@ pub type MaybeZerror = Result<(), ZError>;
 
 /// A [`Result`] wrapper around [`ZError`].
 pub type ZResult<T> = Result<T, ZError>;
+
+/// A trait to facilitate converting lossy error types like [`io::Error`] and [`env::VarError`] into [`ZError`].
+pub trait ZErrorExt {
+    /// The type of input that may have caused this error. For example, a [`PathBuf`] for an [`io::Error`], or a [`String`] for an [`env::VarError`].
+    type OffendingInput;
+    /// Takes this error and the thing that caused it, and turns it into a valid [`ZError`].
+    fn into_zerror(self, input: Self::OffendingInput) -> ZError;
+}
+
+impl ZErrorExt for io::Error {
+    type OffendingInput = PathBuf;
+    fn into_zerror(self, input: Self::OffendingInput) -> ZError {
+        ZError::Io((input.into(), self))
+    }
+}
+impl ZErrorExt for env::VarError {
+    type OffendingInput = String;
+    fn into_zerror(self, input: Self::OffendingInput) -> ZError {
+        ZError::Env((input, self))
+    }
+}
