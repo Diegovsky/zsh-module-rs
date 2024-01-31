@@ -1,7 +1,7 @@
 //! A collection of functions used to interact directly with Zsh
 use std::{io::Read, path::Path};
 
-use crate::{to_cstr, MaybeZerror, ToCString, Zerror};
+use crate::{to_cstr, MaybeZerror, ToCString, ZError};
 
 use zsh_sys as zsys;
 
@@ -22,7 +22,7 @@ use zsh_sys as zsys;
 /// zsh_module::zsh::eval_simple("function func() { echo 'Hello from func' }").unwrap();
 /// ```
 ///
-pub fn eval_simple(cmd: &str) -> MaybeZerror<Zerror> {
+pub fn eval_simple(cmd: &str) -> MaybeZerror {
     static ZSH_CONTEXT_STRING: &[u8] = b"zsh-module-rs-eval\0";
     let og_cmd = cmd;
     unsafe {
@@ -34,7 +34,7 @@ pub fn eval_simple(cmd: &str) -> MaybeZerror<Zerror> {
             ZSH_CONTEXT_STRING.as_ptr() as *mut _,
         );
         if zsys::errflag != 0 {
-            Err(Zerror::EvalError(String::from(og_cmd)))
+            Err(ZError::EvalError(String::from(og_cmd)))
         } else {
             Ok(())
         }
@@ -65,7 +65,7 @@ pub fn eval_simple(cmd: &str) -> MaybeZerror<Zerror> {
 // }
 // impl std::error::Error for SourceError {}
 
-pub fn source_file<P>(path: P) -> MaybeZerror<Zerror>
+pub fn source_file<P>(path: P) -> MaybeZerror
 where
     P: AsRef<Path>,
 {
@@ -77,28 +77,23 @@ where
         Ok(())
     } else {
         Err(match result {
-            zsys::source_return_SOURCE_NOT_FOUND => Zerror::FileNotFound(path.to_path_buf()),
-            zsys::source_return_SOURCE_ERROR => Zerror::SourceError(path.to_path_buf()),
+            zsys::source_return_SOURCE_NOT_FOUND => ZError::FileNotFound(path.to_path_buf()),
+            zsys::source_return_SOURCE_ERROR => ZError::SourceError(path.to_path_buf()),
             _ => unreachable!("Unknown source return value"),
         })
     }
 }
 
 /// Changes the current working directory, idk if this works or not
-pub fn cd<P>(path: P) -> MaybeZerror<Zerror>
+pub fn cd<P>(path: P) -> MaybeZerror
 where
     P: AsRef<Path>,
 {
     let path = path.as_ref();
+    // I want to return the zerror type specific for a path not found here.
     if !path.is_dir() {
-        return Err(Zerror::FileNotFound(path.into()));
+        return Err(ZError::FileNotFound(path.into()));
     }
-    let cd_operation = unsafe { zsh_sys::chdir(path.into_cstr().as_ptr() as *mut _) };
-
-    // TODO: Make actually good error handling
-    if cd_operation == 0 {
-        Ok(())
-    } else {
-        Err(Zerror::CdError((path.into(), cd_operation)))
-    }
+    std::env::set_current_dir(path)?;
+    Ok(())
 }

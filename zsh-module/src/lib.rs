@@ -36,7 +36,7 @@
 //! You can store user data inside a module and have it accessible from any callbacks.
 //! Here's an example module, located at  that defines a new `greet` builtin command:
 //! ```no_run
-//! use zsh_module::{Builtin, MaybeError, Module, ModuleBuilder, Opts};
+//! use zsh_module::{Builtin, MaybeZError, Module, ModuleBuilder, Opts};
 //!
 //! // Notice how this module gets installed as `rgreeter`
 //! zsh_module::export_module!(rgreeter, setup);
@@ -44,7 +44,7 @@
 //! struct Greeter;
 //!
 //! impl Greeter {
-//!     fn greet_cmd(&mut self, _name: &str, _args: &[&str], _opts: Opts) -> MaybeError {
+//!     fn greet_cmd(&mut self, _name: &str, _args: &[&str], _opts: Opts) -> MaybeZError {
 //!         println!("Hello, world!");
 //!         Ok(())
 //!     }
@@ -116,7 +116,8 @@ pub use crate::types::{
 };
 pub use hashtable::HashTable;
 
-trait AnyCmd = Cmd<dyn Any, Zerror>;
+// TODO: Rewrite this to compile in stable rust
+trait AnyCmd = Cmd<dyn Any, ZError>;
 
 /// This trait corresponds to the function signature of a zsh builtin command handler.
 ///
@@ -131,7 +132,7 @@ trait AnyCmd = Cmd<dyn Any, Zerror>;
 ///         let some_result = some_function(some_opts);
 ///         // In this example, the eerror from `some_result` does not fit nicely into a Zerror
 ///         if let Err(e) = some_result {
-///             return Err(Zerror::Runtime(e.to_string()));
+///             return Err(ZError::Runtime(e.to_string()));
 ///         }
 ///         Ok(())
 ///     }
@@ -139,8 +140,13 @@ trait AnyCmd = Cmd<dyn Any, Zerror>;
 ///
 /// # See Also
 /// See [`ModuleBuilder::builtin`] for how to register a command.
-pub trait Cmd<A: Any + ?Sized, E: Into<Zerror>> =
+pub trait Cmd<A: Any + ?Sized, E: Into<ZError>> =
     'static + FnMut(&mut A, &str, &[&str], Opts) -> Result<(), E>;
+
+// TODO: Rewrite it like this to compile in stable rust
+// pub trait Cmd<A: Any + ?Sized, E: Into<ZError>>:
+//     'static + FnMut(&mut A, &str, &[&str], Opts) -> Result<(), E>
+// {}
 
 /// Properties of a zsh builtin command.
 ///
@@ -207,13 +213,15 @@ where
         }
     }
     /// Registers a new builtin command
+    ///
+    /// TODO: This requires the trait alias thing. Idk how to rewrite it to use the stable rust {} pattern.
     pub fn builtin<E, C>(self, mut cb: C, builtin: Builtin) -> Self
     where
-        E: Into<Zerror>,
+        E: Into<ZError>,
         C: Cmd<A, E>,
     {
         let closure: Box<dyn AnyCmd> = Box::new(
-            move |data: &mut (dyn Any + 'static), name, args, opts| -> Result<(), Zerror> {
+            move |data: &mut (dyn Any + 'static), name, args, opts| -> Result<(), ZError> {
                 cb(data.downcast_mut::<A>().unwrap(), name, args, opts).map_err(E::into)
             },
         );

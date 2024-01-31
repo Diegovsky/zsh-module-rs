@@ -1,6 +1,6 @@
 use std::{fs::DirEntry, path::*, str::FromStr};
 
-use crate::{ToCString, Zerror};
+use crate::{ToCString, ZError};
 
 /// A helper struct to represent an owned filepath
 ///
@@ -18,13 +18,13 @@ pub struct FilePath {
 }
 impl FilePath {
     /// Create a new, owned, checked, filepath. This is the preferred way to create this type.
-    pub fn new<P>(pathlike: P) -> Result<Self, Zerror>
+    pub fn new<P>(pathlike: P) -> Result<Self, ZError>
     where
         P: AsRef<Path>,
     {
         let path = pathlike.as_ref().to_path_buf();
         if !path.exists() {
-            return Err(Zerror::FileNotFound(path));
+            return Err(ZError::FileNotFound(path));
         }
 
         let string = path.to_string_lossy().to_string();
@@ -50,7 +50,7 @@ impl FilePath {
         }
     }
     /// Set this filepath's value
-    pub fn set<P>(mut self, new_pathlike_value: P) -> Result<(), Zerror>
+    pub fn set<P>(mut self, new_pathlike_value: P) -> Result<(), ZError>
     where
         P: AsRef<Path>,
     {
@@ -77,13 +77,13 @@ impl AsRef<str> for FilePath {
     }
 }
 impl FromStr for FilePath {
-    type Err = Zerror;
+    type Err = ZError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::new(s)
     }
 }
 impl TryFrom<PathBuf> for FilePath {
-    type Error = Zerror;
+    type Error = ZError;
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
         Self::new(value)
     }
@@ -97,7 +97,7 @@ impl ToCString for FilePath {
     }
 }
 impl TryFrom<DirEntry> for FilePath {
-    type Error = Zerror;
+    type Error = ZError;
     fn try_from(d: DirEntry) -> Result<Self, Self::Error> {
         Self::new(d.path())
     }

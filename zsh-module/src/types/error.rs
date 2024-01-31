@@ -1,15 +1,21 @@
 use crate::variable;
 use std::{env, fmt, io, path::*};
 
+// TODO: Rewrite all doc comments to use new API stuff
 /// A zsh error meant for use in this library internally
 ///
 /// Comes with several useful error types.
 #[derive(Debug)]
-pub enum Zerror {
+pub enum ZError {
+    /// A low-level return type for zsh internal functions that return integer return types
+    ///
+    /// TODO: Rewrite zsh-sys stuff to use this (if a better solution cannot be implemented)
+    Return(isize),
+
     /// A std::io::Error wrapper
     Io(io::Error),
     /// A std::env::VarError wrapper
-    Env(std::env::VarError),
+    Env(env::VarError),
 
     /// An error occurring when evaluating a string
     EvalError(String),
@@ -17,9 +23,6 @@ pub enum Zerror {
     SourceError(PathBuf),
     /// The specified file could not be found.
     FileNotFound(PathBuf),
-    /// Could not change working directory
-    /// TODO: i32 is the exit code?
-    CdError((PathBuf, i32)),
 
     /// Error interacting with variables
     Var(variable::VarError),
@@ -27,52 +30,55 @@ pub enum Zerror {
     /// A generic conversion error. The internal String is the error message.
     Conversion(String),
 }
-impl std::error::Error for Zerror {}
-impl fmt::Display for Zerror {
+impl std::error::Error for ZError {}
+impl fmt::Display for ZError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Return(i) => write!(f, "Received return value: {i}"),
             Self::Io(i) => i.fmt(f),
             Self::Env(i) => i.fmt(f),
 
             Self::EvalError(cmd) => write!(
                 f,
-                "Something went wrong while evaluating the command: {}",
-                cmd
+                "Something went wrong while evaluating the command: {cmd}"
             ),
             Self::SourceError(path) => write!(
                 f,
                 "Something went wrong while sourcing the file: {}",
                 path.display()
             ),
-            Self::Var(e) => write!(f, "Variable error: {}", e),
+            Self::Var(e) => e.fmt(f),
             Self::FileNotFound(path) => write!(f, "File not found: {}", path.display()),
-            Self::CdError((p, c)) => {
-                write!(f, "Could not change directory to {}: {}", p.display(), c)
-            }
 
             Self::Conversion(msg) => write!(f, "Conversion error: {}", msg),
         }
     }
 }
-impl From<io::Error> for Zerror {
+impl From<io::Error> for ZError {
     fn from(e: io::Error) -> Self {
         Self::Io(e)
     }
 }
-impl From<env::VarError> for Zerror {
+impl From<isize> for ZError {
+    fn from(value: isize) -> Self {
+        Self::Return(value)
+    }
+}
+
+impl From<env::VarError> for ZError {
     fn from(e: env::VarError) -> Self {
         Self::Env(e)
     }
 }
-impl From<variable::VarError> for Zerror {
+impl From<variable::VarError> for ZError {
     fn from(e: variable::VarError) -> Self {
         Self::Var(e)
     }
 }
 
 /// The requirements for an error to be a zsh module error
-pub trait ZshModuleError: Into<Zerror> + fmt::Debug + fmt::Display {}
-impl<E> ZshModuleError for E where E: Into<Zerror> + fmt::Debug + fmt::Display {}
+pub trait ZshModuleError: Into<ZError> + fmt::Debug + fmt::Display {}
+impl<E> ZshModuleError for E where E: Into<ZError> + fmt::Debug + fmt::Display {}
 
 /// A zsh module error meant for use in modules.
 ///
@@ -109,9 +115,9 @@ where
     }
 }
 
-/// Represents the possibility of an error `E`.
-/// It is basically a [`Result`] that only cares for its [`Err`] variant.
-///
-/// # Generics
-/// You can (and should) replace the default error type `E` with your own [`Zerror`].
-pub type MaybeZerror<E = Zerror> = Result<(), E>;
+/// Represents the possibility of a zerror.
+/// Only use this for functions that aren't expected to return anything.
+pub type MaybeZerror = Result<(), ZError>;
+
+/// A [`Result`] wrapper around [`ZError`].
+pub type ZResult<T> = Result<T, ZError>;

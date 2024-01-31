@@ -1,4 +1,4 @@
-use crate::Zerror;
+use crate::ZError;
 use std::{
     collections::{HashMap, HashSet},
     fmt, iter,
