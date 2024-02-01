@@ -1,6 +1,7 @@
 use crate::ZError;
 use std::{
     collections::{HashMap, HashSet},
+    ffi::{CStr, CString},
     fmt, iter,
     sync::{
         mpsc::{SendError, Sender},
@@ -8,13 +9,19 @@ use std::{
     },
 };
 
-/// The type we're using for the name of the variable. May change in the future if need be.
+/// The type we're using for the name of the variable, as well as hashmap keys. May change in the future if need be.
 pub type VariableKey = String;
+
+/// The type we're using for scalar (string) variables
+pub type Scalar = String;
 
 /// The type we're sending to the internal mpsc channel
 pub type MpscVarType = (VariableKey, VarType);
 
 /// WIP definition of a variable
+/// ```
+/// VariableBuilder::new("PAGER").build()?;
+/// ```
 ///
 /// TODO: Integrate with zsh
 ///
@@ -41,6 +48,16 @@ impl Variable {
         } else {
             None
         }
+    }
+    /// Change the types of this variable at runtime.
+    ///
+    /// This is equivalent to running `typeset <flag> variable` when the variable is already defined in the shell.
+    pub fn typeset<I>(&mut self, flags: I) -> Result<&mut Self, VarError>
+    where
+        I: IntoIterator<Item = TypeFlags>,
+    {
+        let flags = flags.into_iter();
+        todo!()
     }
     /// Update the value of this variable. This calls internal zsh functions
     ///
@@ -240,7 +257,7 @@ impl VariableBuilder {
 /// A variable primitive. All variables in zsh are typed.
 #[derive(Debug)]
 pub enum Primitive {
-    Scalar(String),
+    Scalar(Scalar),
     Integer(isize),
     Float(f64),
 }
@@ -266,7 +283,7 @@ impl ZVariable for Primitive {
 impl Default for Primitive {
     fn default() -> Self {
         // Returns a new String. This is what zsh does internally too.
-        Self::Scalar(String::new())
+        Self::Scalar(Scalar::default())
     }
 }
 
@@ -275,7 +292,7 @@ impl Default for Primitive {
 pub enum VarType {
     Primitive(Primitive),
     Array(Vec<Primitive>),
-    Association(HashMap<String, Primitive>),
+    Association(HashMap<VariableKey, Primitive>),
 }
 impl ZVariable for VarType {
     fn has_value(&self) -> bool {

@@ -13,22 +13,14 @@ pub enum ZError {
     /// A low-level generic return type for zsh internal functions that return integer return types
     ///
     /// TODO: Rewrite zsh-sys stuff to use this (if a better solution cannot be implemented)
-    Return(ErrorCode),
-
-    /// A std::io::Error wrapper. Try to avoid using this directly
-    /// as a return value from your function if possible.
-    Io(io::Error),
-
-    /// A std::env::VarError wrapper. Try to avoid using this directly
-    /// as a return value from your function if possible.
-    Env(env::VarError),
+    Other(ErrorCode),
 
     /// An error occurring when evaluating a string
     EvalError(ErrorCode),
     /// An error occurring when sourcing a file
     SourceError(ErrorCode),
     /// The specified file could not be found.
-    FileNotFound,
+    FileNotFound(PathBuf),
 
     /// Error interacting with variables
     Var(variable::VarError),
@@ -40,32 +32,20 @@ impl std::error::Error for ZError {}
 impl fmt::Display for ZError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Return(i) => write!(f, "Received return code: {i}"),
-            Self::Io(e) => e.fmt(f),
-            Self::Env(e) => e.fmt(f),
+            Self::Other(i) => write!(f, "Received return code: {i}"),
 
             Self::EvalError(e) => write!(f, "eval error: {e}"),
             Self::SourceError(e) => write!(f, "source error: {e}"),
             Self::Var(v) => v.fmt(f),
-            Self::FileNotFound => "File not found".fmt(f),
+            Self::FileNotFound(p) => write!(f, "File not found: {}", p.display()),
 
             Self::Conversion(msg) => write!(f, "Conversion error: {msg}"),
         }
     }
 }
-impl From<env::VarError> for ZError {
-    fn from(e: env::VarError) -> Self {
-        Self::Env(e)
-    }
-}
-impl From<io::Error> for ZError {
-    fn from(e: io::Error) -> Self {
-        Self::Io(e)
-    }
-}
 impl From<ErrorCode> for ZError {
     fn from(e: ErrorCode) -> Self {
-        Self::Return(e)
+        Self::Other(e)
     }
 }
 impl From<variable::VarError> for ZError {

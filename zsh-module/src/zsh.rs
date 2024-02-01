@@ -63,7 +63,7 @@ where
     if !path.is_file() {
         // Don't source it if we know it can't be sourced
         // Prefer to use the internal rust ZError type for this before finding out the hard way.
-        return Err(ZError::FileNotFound);
+        return Err(ZError::FileNotFound(path.into()));
     }
 
     let path_str = path.into_cstr();
