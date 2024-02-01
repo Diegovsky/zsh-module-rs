@@ -3,7 +3,7 @@ use std::{
     sync::atomic::AtomicBool,
 };
 
-use crate::{log, options::Opts, to_cstr, Module};
+use crate::{log, options::Opts, to_cstr, MaybeZError, Module};
 
 use parking_lot::Mutex;
 use zsh_sys as zsys;
@@ -11,6 +11,7 @@ use zsh_sys as zsys;
 struct ModuleHolder {
     module: Mutex<Option<Module>>,
     panicked: AtomicBool,
+    name: Mutex<Option<&'static str>>,
 }
 
 impl ModuleHolder {
@@ -18,6 +19,7 @@ impl ModuleHolder {
         Self {
             module: parking_lot::const_mutex(None),
             panicked: AtomicBool::new(false),
+            name: parking_lot::const_mutex(None),
         }
     }
 }
@@ -29,17 +31,6 @@ unsafe impl Send for ModuleHolder {}
 
 static MODULE: ModuleHolder = ModuleHolder::empty();
 
-unsafe fn strings_from_ptr<'a>(mut ptr: *const *const c_char) -> Vec<&'a str> {
-    let mut vec = Vec::with_capacity(2);
-    loop {
-        if (*ptr).is_null() {
-            break vec;
-        }
-        vec.push(CStr::from_ptr(*ptr).to_str().expect("Failed to parse arg"));
-        ptr = ptr.add(1);
-    }
-}
-
 extern "C" fn builtin_callback(
     name: *mut c_char,
     args: *mut *mut c_char,
@@ -47,7 +38,7 @@ extern "C" fn builtin_callback(
     _: i32,
 ) -> i32 {
     handle_panic(|| {
-        let args = unsafe { strings_from_ptr(std::mem::transmute(args)) };
+        let args = unsafe { crate::StringArray::from_raw(std::mem::transmute(args)) };
         let name = unsafe { CStr::from_ptr(name) };
         let opts = unsafe { Opts::from_raw(opts) };
 
@@ -61,13 +52,13 @@ extern "C" fn builtin_callback(
         match bin(
             &mut **user_data,
             name.to_str().expect("Failed to parse binary name"),
-            &args,
+            args,
             opts,
         ) {
             Ok(()) => 0,
             Err(e) => {
                 let msg = to_cstr(e.to_string());
-                log::error_named(name, msg);
+                log::warn_named(name, msg);
                 1
             }
         }
@@ -75,18 +66,15 @@ extern "C" fn builtin_callback(
     .unwrap_or(65)
 }
 
-pub fn set_mod(mut module: Module, name: &'static str) {
+pub fn set_name(name: &'static str) {
+    MODULE.name.lock().insert(name);
+}
+
+pub fn set_mod(mut module: Module) {
     for x in module.features.get_binaries() {
         x.handlerfunc = Some(builtin_callback)
     }
-    module.name = Some(name);
     *MODULE.module.lock() = Some(module);
-}
-
-fn drop_mod() {
-    if !panicked() {
-        MODULE.module.lock().take();
-    }
 }
 
 fn get_mod() -> parking_lot::MappedMutexGuard<'static, Module> {
@@ -95,8 +83,20 @@ fn get_mod() -> parking_lot::MappedMutexGuard<'static, Module> {
     })
 }
 
-fn panicked() -> bool {
-    MODULE.panicked.load(std::sync::atomic::Ordering::Acquire)
+impl ModuleHolder {
+    fn drop_mod(&self) {
+        if !self.panicked() {
+            self.module.lock().take();
+        }
+    }
+
+    fn get_name(&self) -> Option<&str> {
+        *self.name.lock()
+    }
+
+    fn panicked(&self) -> bool {
+        self.panicked.load(std::sync::atomic::Ordering::Acquire)
+    }
 }
 
 pub fn handle_maybe_error<E>(error: Result<(), E>) -> i32
@@ -106,8 +106,12 @@ where
     match error {
         Ok(()) => 0,
         Err(e) => {
-            let name = get_mod().name.unwrap_or("Unknown module");
-            crate::error!("{:?}: {}", name, e);
+            let msg = e.to_string();
+            if let Some(name) = MODULE.get_name() {
+                crate::log::error_named(name, msg);
+            } else {
+                crate::log::error(msg);
+            }
             1
         }
     }
@@ -121,7 +125,8 @@ where
     match res {
         Ok(ret) => Some(ret),
         Err(err) => {
-            let name = get_mod().name.unwrap();
+            // Try to get the name but fallback to a generic name
+            let name = MODULE.get_name().unwrap_or("Module");
             MODULE
                 .panicked
                 .store(true, std::sync::atomic::Ordering::Release);
@@ -155,8 +160,10 @@ macro_rules! export_module {
         #[doc(hidden)]
         extern "C" fn setup_(_: $crate::export_module::ffi::Module) -> i32 {
             $crate::export_module::handle_panic(|| {
-                let res = $setupfn().map(|module|
-                    $crate::export_module::set_mod(module, MOD_NAME)
+                let res = $setupfn().map(|module| {
+                    $crate::export_module::set_name(MOD_NAME);
+                    $crate::export_module::set_mod(module)
+                }
                 );
                 $crate::export_module::handle_maybe_error(res)
             })
@@ -235,7 +242,7 @@ mod_fn!(
 // Called after cleanup and when module fails to load.
 mod_fn!(
     fn finish_(_mod) try {
-        drop_mod();
+        MODULE.drop_mod();
         Ok::<(), std::convert::Infallible>(())
     }
 );

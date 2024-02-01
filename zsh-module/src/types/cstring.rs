@@ -5,9 +5,20 @@ use std::{
 };
 
 /// An internal helper function used to convert stringlikes into CStrings.
-/// You will likely never need to use this directly.
-pub fn to_cstr(string: impl Into<Vec<u8>>) -> CString {
+pub(crate) fn to_cstr(string: impl Into<Vec<u8>>) -> CString {
     CString::new(string).expect("Strings should not contain a null byte!")
+}
+
+pub(crate) unsafe fn from_cstr<'a>(ptr: *const c_char) -> Option<&'a CStr> {
+    if ptr.is_null() {
+        None
+    } else {
+        Some(std::ffi::CStr::from_ptr(ptr))
+    }
+}
+
+pub(crate) unsafe fn str_from_cstr<'a>(ptr: *const c_char) -> Option<&'a str> {
+    from_cstr(ptr).and_then(|cstr| cstr.to_str().ok())
 }
 
 /// Represents any type that can be represented as a C String. You shouldn't

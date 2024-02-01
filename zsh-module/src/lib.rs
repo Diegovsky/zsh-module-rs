@@ -36,7 +36,7 @@
 //! You can store user data inside a module and have it accessible from any callbacks.
 //! Here's an example module, located at  that defines a new `greet` builtin command:
 //! ```no_run
-//! use zsh_module::{Builtin, MaybeZError, Module, ModuleBuilder, Opts};
+//! use zsh_module::{Builtin, MaybeZError, Module, ModuleBuilder, Opts, StringArray};
 //!
 //! // Notice how this module gets installed as `rgreeter`
 //! zsh_module::export_module!(rgreeter, setup);
@@ -44,7 +44,7 @@
 //! struct Greeter;
 //!
 //! impl Greeter {
-//!     fn greet_cmd(&mut self, _name: &str, _args: &[&str], _opts: Opts) -> MaybeZError {
+//!     fn greet_cmd(&mut self, _name: &str, _args: StringArray, _opts: Opts) -> MaybeZError {
 //!         println!("Hello, world!");
 //!         Ok(())
 //!     }
@@ -97,7 +97,10 @@ use std::{
 };
 
 use features::Features;
-
+pub use crate::types::{
+    cstring::{to_cstr, ToCString},
+    error::*,
+};
 pub use options::Opts;
 use zsh_sys as zsys;
 
@@ -107,46 +110,50 @@ pub mod log;
 mod options;
 pub mod terminal;
 pub mod types;
+mod string_array;
 // pub mod variable;
 pub mod zsh;
 
-pub use crate::types::{
-    cstring::{to_cstr, ToCString},
-    error::*,
-};
-pub use hashtable::HashTable;
+#[cfg(feature = "export_module")]
+#[doc(hidden)]
+pub mod export_module;
 
-// TODO: Rewrite this to compile in stable rust
+pub use hashtable::HashTable;
+pub use string_array::StringArray;
+
 trait AnyCmd = Cmd<dyn Any, ZError>;
+
+/// Represents the possibility of an error `E`.
+/// It is basically a [`Result`] that only cares for its [`Err`] variant.
+///
+/// # Generics
+/// You can (and should) replace the default error type `E` with your own [`Error`].
+pub type MaybeZError<E = AnyError> = Result<(), E>;
 
 /// This trait corresponds to the function signature of a zsh builtin command handler.
 ///
 /// # Generics
 ///  - `A` is your User Data. For more info, read [`Storing User Data`]
-///  - `E` is anything that can be turned into a [`Box`]ed error.
+///  - `E` is anything that can be turned into a [`ZError`] error.
 ///
+/// [`Storing User Data`]: index.html#storing-user-data
 /// # Example
 /// ```
-///     fn hello_cmd(data: &mut (), _cmd_name: &str, _args: &[&str], opts: zsh_module::Opts) -> zsh_module::MaybeZError {
-///         println!("Hello, world!");
-///         let some_result = some_function(some_opts);
-///         // In this example, the eerror from `some_result` does not fit nicely into a Zerror
-///         if let Err(e) = some_result {
-///             return Err(ZError::Runtime(e.to_string()));
-///         }
-///         Ok(())
-///     }
+/// fn hello_cmd(data: &mut (), _cmd_name: &str, _args: &[&str], opts: zsh_module::Opts) -> zsh_module::MaybeZError {
+///     println!("Hello, world!");
+///     Ok(())
+/// }
 /// ```
 ///
 /// # See Also
 /// See [`ModuleBuilder::builtin`] for how to register a command.
-pub trait Cmd<A: Any + ?Sized, E: Into<ZError>> =
-    'static + FnMut(&mut A, &str, &[&str], Opts) -> Result<(), E>;
 
 // TODO: Rewrite it like this to compile in stable rust
 // pub trait Cmd<A: Any + ?Sized, E: Into<ZError>>:
 //     'static + FnMut(&mut A, &str, &[&str], Opts) -> Result<(), E>
 // {}
+pub trait Cmd<A: Any + ?Sized, E: Into<ZError>> =
+    'static + FnMut(&mut A, &str, StringArray, Opts) -> MaybeZError<E>;
 
 /// Properties of a zsh builtin command.
 ///
@@ -284,7 +291,6 @@ pub struct Module {
     bintable: Bintable,
     #[allow(dead_code)]
     strings: Vec<Box<CStr>>,
-    name: Option<&'static str>,
 }
 
 impl Module {
@@ -295,11 +301,6 @@ impl Module {
             features,
             bintable: desc.bintable,
             strings: desc.strings,
-            name: None,
         }
     }
 }
-
-#[cfg(feature = "export_module")]
-#[doc(hidden)]
-pub mod export_module;
