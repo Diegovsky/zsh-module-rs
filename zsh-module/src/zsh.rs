@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{to_cstr, ErrorCode, MaybeZerror, ToCString, ZError, ZErrorExt, ZResultExt};
+use crate::{to_cstr, ErrorCode, MaybeZError, ToCString, ZError, ZErrorExt, ZResultExt};
 
 use zsh_sys as zsys;
 
@@ -25,7 +25,7 @@ use zsh_sys as zsys;
 /// zsh_module::zsh::eval_simple("function func() { echo 'Hello from func' }").unwrap();
 /// ```
 ///
-pub fn eval_simple<S>(cmd: S) -> MaybeZerror
+pub fn eval_simple<S>(cmd: S) -> MaybeZError
 where
     S: AsRef<str>,
 {
@@ -58,24 +58,7 @@ where
     std::os::unix::io::FromRawFd::from_raw_fd(zsys::SHIN)
 } */
 
-// #[derive(Debug)]
-// #[repr(u32)]
-// pub enum SourceError {
-//     NotFound,
-//     InternalError(Zerror),
-// }
-
-// impl std::fmt::Display for SourceError {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         match self {
-//             Self::NotFound => write!(f, "File not found"),
-//             Self::InternalError(e) => e.fmt(f),
-//         }
-//     }
-// }
-// impl std::error::Error for SourceError {}
-
-pub fn source_file<P>(path: P) -> MaybeZerror
+pub fn source_file<P>(path: P) -> MaybeZError
 where
     P: AsRef<Path>,
 {
@@ -95,18 +78,4 @@ where
             result as ErrorCode,
         )))
     }
-}
-
-/// Changes the current working directory, idk if this works or not
-pub fn cd<P>(path: P) -> MaybeZerror
-where
-    P: Into<PathBuf>,
-{
-    let path = path.into();
-    // // I want to return the zerror type specific for a path not found here.
-    // Redundant, now that io ZErrors can take the invalid filepath
-    // if !path.is_dir() {
-    //     return Err(ZError::FileNotFound(path.into()));
-    // }
-    std::env::set_current_dir(&path).into_zresult(path)
 }

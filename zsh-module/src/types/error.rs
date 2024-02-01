@@ -55,16 +55,6 @@ impl fmt::Display for ZError {
         }
     }
 }
-// impl From<io::Error> for ZError {
-//     fn from(e: io::Error) -> Self {
-//         Self::Io(e)
-//     }
-// }
-// impl From<env::VarError> for ZError {
-//     fn from(e: env::VarError) -> Self {
-//         Self::Env(e)
-//     }
-// }
 impl From<ErrorCode> for ZError {
     fn from(value: ErrorCode) -> Self {
         Self::Return(value)
@@ -117,7 +107,7 @@ where
 
 /// Represents the possibility of a zerror.
 /// Only use this for functions that aren't expected to return anything.
-pub type MaybeZerror = Result<(), ZError>;
+pub type MaybeZError = Result<(), ZError>;
 
 /// A [`Result`] wrapper around [`ZError`].
 pub type ZResult<T> = Result<T, ZError>;

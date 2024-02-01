@@ -127,7 +127,7 @@ trait AnyCmd = Cmd<dyn Any, ZError>;
 ///
 /// # Example
 /// ```
-///     fn hello_cmd(data: &mut (), _cmd_name: &str, _args: &[&str], opts: zsh_module::Opts) -> zsh_module::MaybeError {
+///     fn hello_cmd(data: &mut (), _cmd_name: &str, _args: &[&str], opts: zsh_module::Opts) -> zsh_module::MaybeZError {
 ///         println!("Hello, world!");
 ///         let some_result = some_function(some_opts);
 ///         // In this example, the eerror from `some_result` does not fit nicely into a Zerror
