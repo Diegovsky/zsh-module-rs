@@ -1,4 +1,4 @@
-use crate::variable;
+// use crate::variable;
 use std::{env, ffi, fmt, io, path::*};
 
 /// The internal error code type.
@@ -22,9 +22,8 @@ pub enum ZError {
     /// The specified file could not be found.
     FileNotFound(PathBuf),
 
-    /// Error interacting with variables
-    Var(variable::VarError),
-
+    // /// Error interacting with variables
+    // Var(variable::VarError),
     /// A generic conversion error. The internal String is the error message.
     Conversion(String),
 }
@@ -36,7 +35,7 @@ impl fmt::Display for ZError {
 
             Self::EvalError(e) => write!(f, "eval error: {e}"),
             Self::SourceError(e) => write!(f, "source error: {e}"),
-            Self::Var(v) => v.fmt(f),
+            // Self::Var(v) => v.fmt(f),
             Self::FileNotFound(p) => write!(f, "File not found: {}", p.display()),
 
             Self::Conversion(msg) => write!(f, "Conversion error: {msg}"),
@@ -48,11 +47,11 @@ impl From<ErrorCode> for ZError {
         Self::Other(e)
     }
 }
-impl From<variable::VarError> for ZError {
-    fn from(e: variable::VarError) -> Self {
-        Self::Var(e)
-    }
-}
+// impl From<variable::VarError> for ZError {
+//     fn from(e: variable::VarError) -> Self {
+//         Self::Var(e)
+//     }
+// }
 
 /// Represents the possibility of a zerror.
 /// Only use this for functions that aren't expected to return anything.
