@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{to_cstr, ErrorCode, MaybeZError, ToCString, ZError, ZErrorExt, ZResultExt};
+use crate::{to_cstr, ErrorCode, MaybeZError, ToCString, ZError};
 
 use zsh_sys as zsys;
 
@@ -41,10 +41,7 @@ where
         );
         let errflag = zsys::errflag;
         if errflag != 0 {
-            Err(ZError::EvalError((
-                String::from(og_cmd),
-                errflag as ErrorCode,
-            )))
+            Err(ZError::EvalError(errflag as ErrorCode))
         } else {
             Ok(())
         }
@@ -65,7 +62,8 @@ where
     let path = path.as_ref();
     if !path.is_file() {
         // Don't source it if we know it can't be sourced
-        return Err(ZError::FileNotFound(path.to_path_buf()));
+        // Prefer to use the internal rust ZError type for this before finding out the hard way.
+        return Err(ZError::FileNotFound);
     }
 
     let path_str = path.into_cstr();
@@ -73,9 +71,6 @@ where
     if result == zsys::source_return_SOURCE_OK {
         Ok(())
     } else {
-        Err(ZError::SourceError((
-            path.to_path_buf(),
-            result as ErrorCode,
-        )))
+        Err(ZError::SourceError(result as ErrorCode))
     }
 }
