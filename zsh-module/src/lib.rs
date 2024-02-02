@@ -109,6 +109,7 @@ pub mod terminal;
 pub mod types;
 // pub mod variable;
 pub mod zsh;
+pub mod zalloc;
 
 pub use crate::types::{
     cstring::{to_cstr, ToCString},

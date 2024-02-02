@@ -24,7 +24,6 @@ use zsh_sys as zsys;
 /// zsh_module::zsh::eval_simple("set -x").unwrap();
 /// zsh_module::zsh::eval_simple("function func() { echo 'Hello from func' }").unwrap();
 /// ```
-///
 pub fn eval_simple<S>(cmd: S) -> MaybeZError
 where
     S: AsRef<str>,
