@@ -913,7 +913,7 @@
 #define HAVE_TERMIOS_H 1
 
 /* Define to 1 if you have the <termio.h> header file. */
-#define HAVE_TERMIO_H 1
+// #define HAVE_TERMIO_H 1
 
 /* Define to 1 if you have the <term.h> header file. */
 #define HAVE_TERM_H 1
