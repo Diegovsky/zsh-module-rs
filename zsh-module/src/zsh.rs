@@ -1,17 +1,22 @@
 //! A collection of functions used to interact directly with Zsh
-use std::{
-    io::Read,
-    path::{Path, PathBuf},
-};
+use std::path::Path;
 
-use crate::{to_cstr, ErrorCode, MaybeZError, ToCString, ZError};
+use crate::{ErrorCode, MaybeZError, ToCString, ZError};
 
-use parking_lot::Mutex;
 use zsh_sys as zsys;
 
 mod param;
 
-pub use param::{Param, ParamValue};
+pub use param::{get, Param, ParamValue};
+
+/* #[derive(Clone, Copy)]
+struct Zsh(PhantomData<*mut ()>);
+
+impl Zsh {
+    pub unsafe fn new() -> Zsh {
+        Zsh(PhantomData)
+    }
+} */
 
 #[derive(Debug)]
 /// The error type for Zsh operations that interpret code.
@@ -31,9 +36,8 @@ pub struct InternalError;
 /// zsh_module::zsh::eval_simple("function func() { echo 'Hello from func' }").unwrap();
 /// ```
 ///
-pub fn eval_simple(cmd: impl ToCString) -> MaybeZError<InternalError> {
+pub fn eval_simple(cmd: impl ToCString) -> MaybeZError {
     static ZSH_CONTEXT_STRING: &[u8] = b"zsh-module-rs-eval\0";
-    let og_cmd = cmd.as_ref();
     unsafe {
         let cmd = cmd.into_cstr();
         zsys::execstring(
@@ -49,21 +53,6 @@ pub fn eval_simple(cmd: impl ToCString) -> MaybeZError<InternalError> {
             Ok(())
         }
     }
-}
-
-/// Zsh's current parameter table. Allows you to inspect the values of shell variables, including
-/// locals. In the future, will allow you to set them too.
-/// ```no_run
-/// use zsh_module::zsh::{ Param, paramtab };
-/// let mut tbl = zsh_module::zsh::paramtab();
-/// let zdotdir = tbl.get("ZDOTDIR").and_then(Param::as_str).unwrap();
-/// println!("$ZDOTDIR: {}", zdotdir);
-/// ```
-pub fn paramtab() -> HashTable<Param> {
-    // Prevent multiple threads from accessing this at the same time
-    static PARAMS_BORROWED: Mutex<()> = parking_lot::const_mutex(());
-    std::mem::forget(PARAMS_BORROWED.lock());
-    unsafe { HashTable::new(zsys::paramtab, || PARAMS_BORROWED.force_unlock()) }
 }
 
 // for some shell globals, take a look at Src/init.c:source

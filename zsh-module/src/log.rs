@@ -1,10 +1,5 @@
 //! Zsh native log functions. This module contains high level interfaces to the zsh log functions.
 
-use std::{
-    borrow::Cow,
-    ffi::{c_char, CStr, CString},
-};
-
 use zsh_sys as zsys;
 
 use crate::ToCString;
@@ -29,6 +24,8 @@ pub fn error(msg: impl ToCString) {
 }
 
 /// Prints out an error message from the command `cmd`. See [`crate::error_named!`]
+/// Despite the name, this should be used to log fatal errors, not common ones.
+/// Use [`warn`] for common errors instead.
 pub fn error_named(cmd: impl ToCString, msg: impl ToCString) {
     let cmd = cmd.into_cstr();
     let msg = msg.into_cstr();

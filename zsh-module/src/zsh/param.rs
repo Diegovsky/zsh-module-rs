@@ -1,22 +1,13 @@
-use std::{
-    ffi::{c_char, c_int, c_long, c_uint, CStr},
-    ptr::NonNull,
-};
+use std::ffi::{c_char, CStr};
 
 use zsh_sys as zsys;
 
-use crate::{from_cstr, hashtable::RawHashTable, StringArray};
-
-#[repr(C)]
-/// A Zsh `Param`. This corresponds to a value inside Zsh. See [`paramtab()`] for more info.
-pub struct Param {
-    raw: zsys::param,
-}
+use crate::{types::cstring::ManagedCStr, CStrArray, ToCString};
 
 // Taken from Src/zsh.h
 // TODO: generate this automatically from zsh
 bitflags::bitflags! {
-    struct ParamFlags: i32 {
+    pub struct ParamFlags: i32 {
         const PM_SCALAR =	0	;
         const PM_ARRAY =	(1<<0)	;
         const PM_INTEGER =	(1<<1)	;
@@ -67,7 +58,7 @@ bitflags::bitflags! {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ParamType {
+pub enum ParamType {
     Scalar,
     Integer,
     EFloat,
@@ -99,28 +90,117 @@ impl ParamFlags {
 
 impl std::fmt::Debug for Param {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let node = &self.raw.node;
-        let raw = &self.raw;
-        let old = NonNull::new(Param::from_raw(raw.old)).map(|ptr| unsafe { ptr.as_ref() });
         f.debug_struct("Param")
-            .field("name", &unsafe { from_cstr(node.nam) })
-            .field("flags", &ParamFlags::from_bits(node.flags))
-            .field("base", &raw.base)
-            .field("width", &raw.width)
-            .field("env", &unsafe { from_cstr(raw.env) })
-            .field("ename", &unsafe { from_cstr(raw.ename) })
-            .field("old", &old)
+            .field("type", &self.flags())
             .finish()
+    }
+}
+
+macro_rules! gsu_wrapper {
+    ($(struct $ident:ident ($raw:ty) -> $T:ty);* $(;)?) => {
+        $(
+        struct $ident<'a>(&'a $raw, zsys::Param);
+        impl<'a> $ident<'a> {
+            #[inline]
+            unsafe fn new(raw: *const $raw, param: &'a mut Param) -> Self {
+                Self(&*raw, param.as_mut_ptr())
+            }
+            #[inline]
+            unsafe fn get(&self) -> $T {
+                (self.0.getfn.expect("Missing getfn"))(self.1)
+            }
+            /* #[inline]
+            unsafe fn set(&self, val: $T) {
+                (self.0.setfn.expect("Missing setfn"))(self.1, val)
+            }
+            #[inline]
+            unsafe fn unset(&self, flags: c_int) {
+                (self.0.unsetfn.expect("Missing unsetfn"))(self.1, flags)
+            } */
+
+        })*
+    };
+}
+
+gsu_wrapper! {
+    struct GsuScalar(zsys::gsu_scalar) -> *mut c_char;
+    struct GsuInteger(zsys::gsu_integer) -> zsys::zlong;
+    struct GsuFloat(zsys::gsu_float) -> f64;
+    struct GsuArray(zsys::gsu_array) -> *mut *mut c_char;
+}
+
+macro_rules! fn_get_gsu {
+    ($name:ident, $field:ident, $gsu:ty) => {
+        #[inline]
+        unsafe fn $name<'a>(&'a mut self) -> $gsu {
+            <$gsu>::new(self.0.gsu.$field, self)
+        }
+    };
+}
+
+/// A Zsh `Param`. This corresponds to a value inside Zsh.
+#[repr(transparent)]
+pub struct Param(zsys::param);
+
+impl Param {
+    fn as_mut_ptr(&mut self) -> zsys::Param {
+        &mut self.0
+    }
+    #[inline]
+    pub fn flags(&self) -> ParamFlags {
+        ParamFlags::from_bits(self.0.node.flags).unwrap()
+    }
+
+    fn_get_gsu!(scalar_gsu, s, GsuScalar);
+    fn_get_gsu!(int_gsu, i, GsuInteger);
+    fn_get_gsu!(float_gsu, f, GsuFloat);
+    fn_get_gsu!(array_gsu, a, GsuArray);
+
+    #[inline]
+    pub fn type_of(&self) -> ParamType {
+        self.flags().only_type()
+    }
+
+    #[inline]
+    pub fn get_value(&mut self) -> ParamValue {
+        match self.type_of() {
+            ParamType::Scalar => {
+                ParamValue::Scalar(unsafe { CStr::from_ptr(self.scalar_gsu().get()) })
+            }
+            ParamType::EFloat | ParamType::FFloat => {
+                ParamValue::Float(unsafe { self.float_gsu().get() })
+            }
+            ParamType::Integer => ParamValue::Integer(unsafe { self.int_gsu().get() }),
+            ParamType::Array => {
+                ParamValue::Array(unsafe { CStrArray::from_raw(self.array_gsu().get().cast()) })
+            }
+            ParamType::Hashed => ParamValue::HashTable,
+        }
     }
 }
 
 /// The possible types a Zsh `Param` can be.
 #[derive(Debug)]
-#[non_exhaustive]
 pub enum ParamValue<'a> {
-    String(&'a CStr),
+    Scalar(&'a CStr),
     Integer(i64),
     Float(f64),
-    Array(StringArray),
-    // Hashed,
+    Array(CStrArray),
+    HashTable,
+}
+
+/// Returns a [`Param`] from the current `paramtab`.
+pub fn get(name: impl ToCString) -> Option<Param> {
+    let name = name.into_cstr().into_owned();
+    let og_name = name.clone();
+    let mut name = ManagedCStr::new(name);
+    let mut value: zsys::value = unsafe { std::mem::zeroed() };
+    if unsafe { zsys::getvalue(&mut value, &mut name.ptr(), 1) }.is_null() {
+        None
+    } else {
+        unsafe {
+            assert_eq!(name.c_str(), &*og_name);
+            Some(Param(*value.pm))
+        }
+    }
 }

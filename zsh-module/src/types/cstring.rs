@@ -102,3 +102,32 @@ impl ToCString for *mut c_char {
         Cow::Borrowed(unsafe { CStr::from_ptr(self) })
     }
 }
+
+/// A convenient wrapper around a Rust-allocated `CString` to allow mutation for C functions that
+/// need it.
+///
+/// Some `zsh` functions mutate the input string.
+#[repr(transparent)]
+pub(crate) struct ManagedCStr(*mut c_char);
+
+impl ManagedCStr {
+    #[inline]
+    pub fn new(c_str: impl ToCString) -> Self {
+        Self(c_str.into_cstr().into_owned().into_raw())
+    }
+    #[inline]
+    pub fn c_str(&self) -> &CStr {
+        // SAFETY: since this originated from `CString`, it's always safe to call this
+        unsafe { CStr::from_ptr(self.0) }
+    }
+    #[inline]
+    pub fn ptr(&mut self) -> *mut c_char {
+        self.0
+    }
+}
+
+impl Drop for ManagedCStr {
+    fn drop(&mut self) {
+        let _ = unsafe { CString::from_raw(self.0) };
+    }
+}

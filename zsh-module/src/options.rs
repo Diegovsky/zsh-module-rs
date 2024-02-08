@@ -1,8 +1,8 @@
-use std::{ffi::CStr, os::raw::c_char};
+use std::os::raw::c_char;
 
 use zsh_sys as zsys;
 
-use crate::str_from_cstr;
+use crate::types::cstring::str_from_cstr;
 
 /// Represents all the options passed to a command.
 pub struct Opts {

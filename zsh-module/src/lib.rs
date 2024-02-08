@@ -82,53 +82,40 @@
 //! ```
 //!
 //! That is it!
-
-// My goal is to eliminate the need for this nightly feature.
-#![feature(trait_alias)]
-
 use std::{
     any::Any,
-    borrow::Cow,
     collections::HashMap,
-    ffi::{c_char, CStr, CString, OsStr},
-    fmt, io,
-    os::unix::ffi::OsStrExt,
-    path::*,
+    ffi::{CStr, CString},
+    panic::UnwindSafe,
 };
 
+pub use crate::types::{cstring::ToCString, error::*};
 use features::Features;
-pub use crate::types::{
-    cstring::{to_cstr, ToCString},
-    error::*,
-};
 pub use options::Opts;
+use types::cstring::to_cstr;
 use zsh_sys as zsys;
 
 mod features;
-mod hashtable;
+// mod hashtable;
 pub mod log;
 mod options;
 pub mod terminal;
 pub mod types;
-mod string_array;
-// pub mod variable;
 pub mod zsh;
 
 #[cfg(feature = "export_module")]
 #[doc(hidden)]
 pub mod export_module;
 
-pub use hashtable::HashTable;
-pub use string_array::StringArray;
-
-trait AnyCmd = Cmd<dyn Any, ZError>;
+// pub use hashtable::HashTable;
+pub use types::CStrArray;
 
 /// Represents the possibility of an error `E`.
 /// It is basically a [`Result`] that only cares for its [`Err`] variant.
 ///
 /// # Generics
-/// You can (and should) replace the default error type `E` with your own [`Error`].
-pub type MaybeZError<E = AnyError> = Result<(), E>;
+/// You can (and should) replace the default error type `E` with your own `Error`.
+pub type MaybeZError<E = ZError> = Result<(), E>;
 
 /// This trait corresponds to the function signature of a zsh builtin command handler.
 ///
@@ -139,7 +126,7 @@ pub type MaybeZError<E = AnyError> = Result<(), E>;
 /// [`Storing User Data`]: index.html#storing-user-data
 /// # Example
 /// ```
-/// fn hello_cmd(data: &mut (), _cmd_name: &str, _args: &[&str], opts: zsh_module::Opts) -> zsh_module::MaybeZError {
+/// fn hello_cmd(data: &mut (), _cmd_name: &CStr, _args: CStrArray, opts: zsh_module::Opts) -> zsh_module::MaybeZError {
 ///     println!("Hello, world!");
 ///     Ok(())
 /// }
@@ -147,13 +134,19 @@ pub type MaybeZError<E = AnyError> = Result<(), E>;
 ///
 /// # See Also
 /// See [`ModuleBuilder::builtin`] for how to register a command.
+pub trait Cmd<A: Any + ?Sized> {
+    fn call(&mut self, userdata: &mut A, name: &CStr, array: CStrArray, opts: Opts) -> MaybeZError;
+}
 
-// TODO: Rewrite it like this to compile in stable rust
-// pub trait Cmd<A: Any + ?Sized, E: Into<ZError>>:
-//     'static + FnMut(&mut A, &str, &[&str], Opts) -> Result<(), E>
-// {}
-pub trait Cmd<A: Any + ?Sized, E: Into<ZError>> =
-    'static + FnMut(&mut A, &str, StringArray, Opts) -> MaybeZError<E>;
+impl<A: Any + ?Sized, F, E> Cmd<A> for F
+where
+    E: Into<ZError>,
+    F: Fn(&mut A, &CStr, CStrArray, Opts) -> MaybeZError<E>,
+{
+    fn call(&mut self, userdata: &mut A, name: &CStr, array: CStrArray, opts: Opts) -> MaybeZError {
+        self(userdata, name, array, opts).map_err(E::into)
+    }
+}
 
 /// Properties of a zsh builtin command.
 ///
@@ -195,7 +188,9 @@ impl Builtin {
     }
 }
 
-type Bintable = HashMap<Box<CStr>, Box<dyn AnyCmd>>;
+type CmdHandler = Box<dyn FnMut(&mut (dyn Any + 'static), &CStr, CStrArray, Opts) -> MaybeZError>;
+
+type Bintable = HashMap<Box<CStr>, CmdHandler>;
 
 /// Allows you to build a [`Module`]
 pub struct ModuleBuilder<A> {
@@ -208,30 +203,27 @@ pub struct ModuleBuilder<A> {
 
 impl<A> ModuleBuilder<A>
 where
-    A: Any + 'static,
+    A: Any + UnwindSafe + 'static,
 {
     //! Creates an empty [`Self`] with options ready for configuration.
     pub fn new(user_data: A) -> Self {
         Self {
             user_data,
-            binaries: vec![],
+            binaries: Vec::new(),
             bintable: HashMap::new(),
-            strings: Vec::with_capacity(8),
+            strings: Vec::new(),
         }
     }
     /// Registers a new builtin command
     ///
     /// TODO: This requires the trait alias thing. Idk how to rewrite it to use the stable rust {} pattern.
-    pub fn builtin<E, C>(self, mut cb: C, builtin: Builtin) -> Self
+    pub fn builtin<C>(self, mut cmd: C, builtin: Builtin) -> Self
     where
-        E: Into<ZError>,
-        C: Cmd<A, E>,
+        C: Cmd<A> + 'static,
     {
-        let closure: Box<dyn AnyCmd> = Box::new(
-            move |data: &mut (dyn Any + 'static), name, args, opts| -> Result<(), ZError> {
-                cb(data.downcast_mut::<A>().unwrap(), name, args, opts).map_err(E::into)
-            },
-        );
+        let closure: CmdHandler = Box::new(move |data, name, args, opts| -> Result<(), ZError> {
+            cmd.call(data.downcast_mut::<A>().unwrap(), name, args, opts)
+        });
         self.add_builtin(
             builtin.name,
             builtin.minargs,
@@ -252,7 +244,7 @@ where
         minargs: i32,
         maxargs: i32,
         options: Option<CString>,
-        cb: Box<dyn AnyCmd + 'static>,
+        cb: CmdHandler,
     ) -> Self {
         let name = name.into_boxed_c_str();
         let flags = match options {
@@ -286,7 +278,7 @@ where
 
 /// Hooks into the Zsh module system and connects it to your `User Data`.
 pub struct Module {
-    user_data: Box<dyn Any>,
+    user_data: Box<dyn Any + UnwindSafe>,
     features: Features,
     bintable: Bintable,
     #[allow(dead_code)]
@@ -294,7 +286,7 @@ pub struct Module {
 }
 
 impl Module {
-    fn new<A: Any + 'static>(desc: ModuleBuilder<A>) -> Self {
+    fn new<A: Any + UnwindSafe + 'static>(desc: ModuleBuilder<A>) -> Self {
         let features = Features::empty().binaries(desc.binaries.into());
         Self {
             user_data: Box::new(desc.user_data),

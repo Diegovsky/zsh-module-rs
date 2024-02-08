@@ -1,0 +1,5 @@
+#!/usr/bin/sh
+
+cargo build
+cp ../target/debug/libgreeter.so ./rgreeter.so
+env -i TERM="$TERM" ZDOTDIR="$PWD" zsh
