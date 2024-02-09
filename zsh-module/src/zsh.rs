@@ -35,7 +35,6 @@ pub struct InternalError;
 /// zsh_module::zsh::eval_simple("set -x").unwrap();
 /// zsh_module::zsh::eval_simple("function func() { echo 'Hello from func' }").unwrap();
 /// ```
-///
 pub fn eval_simple(cmd: impl ToCString) -> MaybeZError {
     static ZSH_CONTEXT_STRING: &[u8] = b"zsh-module-rs-eval\0";
     unsafe {

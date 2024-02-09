@@ -102,6 +102,7 @@ mod options;
 pub mod terminal;
 pub mod types;
 pub mod zsh;
+pub mod zalloc;
 
 #[cfg(feature = "export_module")]
 #[doc(hidden)]
