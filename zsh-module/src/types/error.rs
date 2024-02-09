@@ -1,5 +1,5 @@
 // use crate::variable;
-use std::{env, ffi, fmt, io, path::*};
+use std::{fmt, path::*};
 
 /// The internal error code type.
 pub type ErrorCode = isize;
@@ -22,8 +22,9 @@ pub enum ZError {
     /// The specified file could not be found.
     FileNotFound(PathBuf),
 
-    // /// Error interacting with variables
-    // Var(variable::VarError),
+    /// An error defined by the library user.
+    CustomMessage(String),
+
     /// A generic conversion error. The internal String is the error message.
     Conversion(String),
 }
@@ -35,10 +36,9 @@ impl fmt::Display for ZError {
 
             Self::EvalError(e) => write!(f, "eval error: {e}"),
             Self::SourceError(e) => write!(f, "source error: {e}"),
-            // Self::Var(v) => v.fmt(f),
             Self::FileNotFound(p) => write!(f, "File not found: {}", p.display()),
-
             Self::Conversion(msg) => write!(f, "Conversion error: {msg}"),
+            Self::CustomMessage(msg) => write!(f, "Error: {msg}"),
         }
     }
 }

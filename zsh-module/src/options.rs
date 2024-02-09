@@ -1,6 +1,8 @@
-use std::{ffi::CStr, os::raw::c_char};
+use std::os::raw::c_char;
 
 use zsh_sys as zsys;
+
+use crate::types::cstring::str_from_cstr;
 
 /// Represents all the options passed to a command.
 pub struct Opts {
@@ -58,9 +60,7 @@ impl Opts {
                 std::ptr::slice_from_raw_parts((*self.raw).args, (*self.raw).argscount as usize);
             let opt = (*self.raw).ind[c as usize];
             if opt > 3 {
-                CStr::from_ptr((*args)[(opt >> 2) as usize - 1])
-                    .to_str()
-                    .ok()
+                str_from_cstr((*args)[(opt >> 2) as usize - 1])
             } else {
                 None
             }

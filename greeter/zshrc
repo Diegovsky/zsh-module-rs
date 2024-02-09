@@ -1,0 +1,3 @@
+module_path+=$PWD
+zmodload rgreeter
+unset RCS

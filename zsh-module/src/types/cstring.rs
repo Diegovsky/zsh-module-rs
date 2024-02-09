@@ -5,9 +5,20 @@ use std::{
 };
 
 /// An internal helper function used to convert stringlikes into CStrings.
-/// You will likely never need to use this directly.
-pub fn to_cstr(string: impl Into<Vec<u8>>) -> CString {
+pub(crate) fn to_cstr(string: impl Into<Vec<u8>>) -> CString {
     CString::new(string).expect("Strings should not contain a null byte!")
+}
+
+pub(crate) unsafe fn from_cstr<'a>(ptr: *const c_char) -> Option<&'a CStr> {
+    if ptr.is_null() {
+        None
+    } else {
+        Some(std::ffi::CStr::from_ptr(ptr))
+    }
+}
+
+pub(crate) unsafe fn str_from_cstr<'a>(ptr: *const c_char) -> Option<&'a str> {
+    from_cstr(ptr).and_then(|cstr| cstr.to_str().ok())
 }
 
 /// Represents any type that can be represented as a C String. You shouldn't
@@ -89,5 +100,34 @@ impl ToCString for *const c_char {
 impl ToCString for *mut c_char {
     fn into_cstr<'a>(self) -> Cow<'a, CStr> {
         Cow::Borrowed(unsafe { CStr::from_ptr(self) })
+    }
+}
+
+/// A convenient wrapper around a Rust-allocated `CString` to allow mutation for C functions that
+/// need it.
+///
+/// Some `zsh` functions mutate the input string.
+#[repr(transparent)]
+pub(crate) struct ManagedCStr(*mut c_char);
+
+impl ManagedCStr {
+    #[inline]
+    pub fn new(c_str: impl ToCString) -> Self {
+        Self(c_str.into_cstr().into_owned().into_raw())
+    }
+    #[inline]
+    pub fn c_str(&self) -> &CStr {
+        // SAFETY: since this originated from `CString`, it's always safe to call this
+        unsafe { CStr::from_ptr(self.0) }
+    }
+    #[inline]
+    pub fn ptr(&mut self) -> *mut c_char {
+        self.0
+    }
+}
+
+impl Drop for ManagedCStr {
+    fn drop(&mut self) {
+        let _ = unsafe { CString::from_raw(self.0) };
     }
 }
