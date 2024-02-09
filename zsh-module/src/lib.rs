@@ -101,8 +101,8 @@ pub mod log;
 mod options;
 pub mod terminal;
 pub mod types;
-pub mod zsh;
 pub mod zalloc;
+pub mod zsh;
 
 #[cfg(feature = "export_module")]
 #[doc(hidden)]
@@ -186,6 +186,17 @@ impl Builtin {
     pub fn flags(mut self, value: &str) -> Self {
         self.flags = Some(to_cstr(value));
         self
+    }
+}
+impl From<&str> for Builtin {
+    fn from(s: &str) -> Self {
+        Self::new(s)
+    }
+}
+impl std::str::FromStr for Builtin {
+    type Err = std::convert::Infallible;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::new(s))
     }
 }
 
