@@ -143,6 +143,13 @@ macro_rules! fn_get_gsu {
 pub struct Param(zsys::param);
 
 impl Param {
+    /// A wrapper function that returns a [`Param`] from the current zsh internal `paramtab`.
+    ///
+    /// This will return [`None`] if the param does not exist.
+    #[inline]
+    pub fn new(name: impl ToCString) -> Option<Self> {
+        get(name)
+    }
     fn as_mut_ptr(&mut self) -> zsys::Param {
         &mut self.0
     }
