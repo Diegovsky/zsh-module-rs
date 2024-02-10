@@ -8,4 +8,4 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-zsh-module = {path="../zsh-module"}
+zsh-module = { path = "../../zsh-module" }

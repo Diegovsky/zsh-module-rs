@@ -30,6 +30,7 @@ use std::{
 /// This is guaranteed to be represented as a pointer of pointers. And as such, all operations are
 /// linear.
 #[repr(transparent)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CStrArray(*const *const c_char);
 
 impl CStrArray {

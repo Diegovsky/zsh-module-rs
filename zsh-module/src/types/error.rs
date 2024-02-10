@@ -25,6 +25,9 @@ pub enum ZError {
     /// An error defined by the library user.
     CustomMessage(String),
 
+    /// An error defined by the library user, but as a static str
+    CustomStr(&'static str),
+
     /// A generic conversion error. The internal String is the error message.
     Conversion(String),
 }
@@ -39,12 +42,23 @@ impl fmt::Display for ZError {
             Self::FileNotFound(p) => write!(f, "File not found: {}", p.display()),
             Self::Conversion(msg) => write!(f, "Conversion error: {msg}"),
             Self::CustomMessage(msg) => write!(f, "Error: {msg}"),
+            Self::CustomStr(msg) => write!(f, "Error: {msg}"),
         }
     }
 }
 impl From<ErrorCode> for ZError {
     fn from(e: ErrorCode) -> Self {
         Self::Other(e)
+    }
+}
+impl From<String> for ZError {
+    fn from(value: String) -> Self {
+        Self::Conversion(value)
+    }
+}
+impl From<&'static str> for ZError {
+    fn from(value: &'static str) -> Self {
+        Self::CustomStr(value)
     }
 }
 // impl From<variable::VarError> for ZError {
