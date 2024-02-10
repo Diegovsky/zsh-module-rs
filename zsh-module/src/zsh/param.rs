@@ -147,7 +147,7 @@ impl Param {
     ///
     /// This will return [`None`] if the param does not exist.
     #[inline]
-    pub fn new(name: impl ToCString) -> Option<Self> {
+    pub fn get(name: impl ToCString) -> Option<Self> {
         get(name)
     }
     fn as_mut_ptr(&mut self) -> zsys::Param {
