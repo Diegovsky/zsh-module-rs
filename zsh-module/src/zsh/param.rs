@@ -1,8 +1,11 @@
-use std::ffi::{c_char, CStr};
+use std::{
+    ffi::{c_char, CStr},
+    str::FromStr,
+};
 
 use zsh_sys as zsys;
 
-use crate::{types::cstring::ManagedCStr, CStrArray, ToCString};
+use crate::{types::cstring::ManagedCStr, CStrArray, ToCString, ZError};
 
 // Taken from Src/zsh.h
 // TODO: generate this automatically from zsh
@@ -194,6 +197,78 @@ pub enum ParamValue<'a> {
     Float(f64),
     Array(CStrArray),
     HashTable,
+}
+impl<'a> ParamValue<'a> {
+    /// Perform type inference to get the value as if it were an integer
+    ///
+    /// This should do the exact same thing as zsh internal type inference. If there are any
+    /// discrepancies, please file a bug report.
+    pub fn as_int(&self) -> Option<i64> {
+        match self {
+            ParamValue::Integer(i) => Some(*i),
+            _ => None,
+        }
+    }
+    /// Perform type inference to get the value as if it were a f64
+    ///
+    /// This should do the exact same thing as zsh internal type inference. If there are any
+    /// discrepancies, please file a bug report.
+    pub fn as_float(&self) -> Option<f64> {
+        match self {
+            ParamValue::Float(f) => Some(*f),
+            ParamValue::Integer(i) => Some(*i as f64),
+            ParamValue::Scalar(s) => s.to_string_lossy().parse().ok(),
+            _ => None,
+        }
+    }
+    /// Perform type inference to get the value as if it were an array
+    ///
+    /// This should do the exact same thing as zsh internal type inference. If there are any
+    /// discrepancies, please file a bug report.
+    pub fn as_array(&self) -> Option<Vec<String>> {
+        match self {
+            ParamValue::Array(a) => {
+                let arr = a.iter().map(|i| i.to_string_lossy().to_string()).collect();
+                Some(arr)
+            }
+            ParamValue::Scalar(s) => Some(vec![s.to_string_lossy().to_string()]),
+            ParamValue::Integer(i) => Some(vec![i.to_string()]),
+            ParamValue::Float(f) => Some(vec![f.to_string()]),
+            ParamValue::HashTable => {
+                // TODO: (key value key value) assoc
+                None
+            }
+        }
+    }
+    // /// Perform type inference to get the value as if it were an association
+    // ///
+    // /// This should do the exact same thing as zsh internal type inference. If there are any
+    // /// discrepancies, please file a bug report.
+    // pub fn as_assoc(&self) -> Option<&CStrArray> {
+    //     match self {
+    //         ParamValue::HashTable => None,
+    //         _ => None,
+    //     }
+    // }
+}
+
+impl std::fmt::Display for ParamValue<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParamValue::Scalar(s) => write!(f, "{}", s.to_string_lossy()),
+            ParamValue::Integer(i) => write!(f, "{i}"),
+            ParamValue::Float(e) => write!(f, "{e}"),
+            ParamValue::Array(a) => write!(
+                f,
+                "( {} )",
+                a.iter_str()
+                    .filter_map(|a| a.ok())
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            ),
+            ParamValue::HashTable => write!(f, "TODO: Hash table is nonfunctional"),
+        }
+    }
 }
 
 /// Returns a [`Param`] from the current `paramtab`.
