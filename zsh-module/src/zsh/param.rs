@@ -190,7 +190,7 @@ impl Param {
 }
 
 /// The possible types a Zsh `Param` can be.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ParamValue<'a> {
     Scalar(&'a CStr),
     Integer(i64),
